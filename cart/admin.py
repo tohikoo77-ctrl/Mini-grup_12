@@ -7,6 +7,12 @@ class CartItemInline(admin.TabularInline):
     extra = 0
     readonly_fields = ("total_price", "created_at", "updated_at")
 
+    def total_price(self, obj):
+        if obj.quantity and obj.price_snapshot:
+            return obj.quantity * obj.price_snapshot
+        return 0
+    total_price.short_description = "Total Price"
+
 
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
@@ -20,8 +26,21 @@ class CartAdmin(admin.ModelAdmin):
 
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ("cart", "product", "quantity", "price_snapshot", "total_price", "created_at")
+    list_display = (
+        "cart",
+        "product",
+        "quantity",
+        "price_snapshot",
+        "total_price",
+        "created_at",
+    )
     list_filter = ("created_at",)
     search_fields = ("product__name", "cart__user__phone_number")
     readonly_fields = ("total_price", "created_at", "updated_at")
     ordering = ("-created_at",)
+
+    def total_price(self, obj):
+        if obj.quantity and obj.price_snapshot:
+            return obj.quantity * obj.price_snapshot
+        return 0
+    total_price.short_description = "Total Price"
