@@ -11,6 +11,7 @@ class CartItemInline(admin.TabularInline):
         if obj.quantity and obj.price_snapshot:
             return obj.quantity * obj.price_snapshot
         return 0
+
     total_price.short_description = "Total Price"
 
 
@@ -43,4 +44,5 @@ class CartItemAdmin(admin.ModelAdmin):
         if obj.quantity and obj.price_snapshot:
             return obj.quantity * obj.price_snapshot
         return 0
+
     total_price.short_description = "Total Price"

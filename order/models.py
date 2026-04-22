@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from product.models import Product
 
 
 class Order(models.Model):
@@ -37,19 +38,19 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-<<<<<<< HEAD
+
     product = models.ForeignKey(
-        "announcements.Announcement",
-        on_delete=models.PROTECT,
-        related_name="order_items",
+        Product, on_delete=models.PROTECT, related_name="order_items"
     )
-=======
-    product = models.ForeignKey("product.Product", on_delete=models.PROTECT, related_name="order_items")
->>>>>>> 46fcb280bb59991e63e20580eaec33e113b5dd3e
+
     quantity = models.PositiveIntegerField(default=1)
+
     price_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
+
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -58,4 +59,4 @@ class OrderItem(models.Model):
         self.order.update_total_price()
 
     def __str__(self):
-        return f"{self.product.title} x {self.quantity}"
+        return f"{self.product.name} x {self.quantity}"
