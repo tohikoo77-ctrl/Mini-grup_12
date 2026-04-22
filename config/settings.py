@@ -22,7 +22,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "django_filters",
-    
     # project_apps
     "users",
     "category",

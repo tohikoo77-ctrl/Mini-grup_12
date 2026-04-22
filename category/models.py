@@ -14,7 +14,9 @@ class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
-    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="children")
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
     image = models.ImageField(upload_to="categories/%Y/%m/", null=True, blank=True)
     icon = models.CharField(max_length=50, null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -42,7 +44,9 @@ class Category(models.Model):
 
 class CategoryProperty(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="properties")
+    category = models.ForeignKey(
+        Category, on_delete=models.CASCADE, related_name="properties"
+    )
     name = models.CharField(max_length=100)
     field_type = models.CharField(max_length=20, choices=FieldType.choices)
     is_required = models.BooleanField(default=False)
@@ -57,7 +61,9 @@ class CategoryProperty(models.Model):
 
 class PropertyOption(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    property = models.ForeignKey(CategoryProperty, on_delete=models.CASCADE, related_name="options")
+    property = models.ForeignKey(
+        CategoryProperty, on_delete=models.CASCADE, related_name="options"
+    )
     value = models.CharField(max_length=100)
 
     def __str__(self):

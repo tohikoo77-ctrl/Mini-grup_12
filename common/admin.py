@@ -29,8 +29,20 @@ class DistrictAdmin(admin.ModelAdmin):
 
 @admin.register(UserAddress)
 class UserAddressAdmin(admin.ModelAdmin):
-    list_display = ("user", "region", "district", "address_line", "is_default", "created_at")
-    search_fields = ("user__phone_number", "region__name", "district__name", "address_line")
+    list_display = (
+        "user",
+        "region",
+        "district",
+        "address_line",
+        "is_default",
+        "created_at",
+    )
+    search_fields = (
+        "user__phone_number",
+        "region__name",
+        "district__name",
+        "address_line",
+    )
     list_filter = ("region", "district", "is_default")
     ordering = ("-created_at",)
 
@@ -42,4 +54,3 @@ class UserAddressAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = ("created_at",)
-    

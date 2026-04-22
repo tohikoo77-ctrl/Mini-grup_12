@@ -26,15 +26,9 @@ class OTPService:
             },
         )
 
-
         user.otps.filter(is_used=False).update(is_used=True)
 
-        last_otp = (
-            user.otps
-            .filter(is_used=False)
-            .order_by("-created_at")
-            .first()
-        )
+        last_otp = user.otps.filter(is_used=False).order_by("-created_at").first()
 
         if last_otp:
             diff = (timezone.now() - last_otp.created_at).total_seconds()
@@ -57,12 +51,7 @@ class OTPService:
     @transaction.atomic
     def verify_otp(user, code):
 
-        otp = (
-            user.otps
-            .filter(code=code, is_used=False)
-            .order_by("-created_at")
-            .first()
-        )
+        otp = user.otps.filter(code=code, is_used=False).order_by("-created_at").first()
 
         if not otp:
             return False

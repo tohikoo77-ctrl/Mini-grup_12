@@ -3,8 +3,6 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, UserProfile, UserOTP
 
 
-
-
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
@@ -18,6 +16,7 @@ class UserProfileInline(admin.StackedInline):
         "birth_date",
         "bio",
     )
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
@@ -48,7 +47,7 @@ class UserAdmin(BaseUserAdmin):
 
     inlines = (UserProfileInline,)
 
-# Togri formatda koriniwi uc
+    # Togri formatda koriniwi uc
     fieldsets = (
         (
             "Account",
@@ -114,7 +113,7 @@ class UserAdmin(BaseUserAdmin):
     )
 
 
-#OTP 
+# OTP
 @admin.register(UserOTP)
 class UserOTPAdmin(admin.ModelAdmin):
 

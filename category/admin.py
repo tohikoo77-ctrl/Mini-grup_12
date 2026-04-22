@@ -46,15 +46,9 @@ class CategoryAdmin(admin.ModelAdmin):
     inlines = (CategoryPropertyInline,)
 
     fieldsets = (
-        ("Category Info", {
-            "fields": ("name", "slug", "parent", "image", "icon")
-        }),
-        ("Settings", {
-            "fields": ("is_active", "order")
-        }),
-        ("Meta", {
-            "fields": ("created_at", "updated_at")
-        }),
+        ("Category Info", {"fields": ("name", "slug", "parent", "image", "icon")}),
+        ("Settings", {"fields": ("is_active", "order")}),
+        ("Meta", {"fields": ("created_at", "updated_at")}),
     )
 
     readonly_fields = ("created_at", "updated_at")
@@ -98,13 +92,10 @@ class PropertyOptionAdmin(admin.ModelAdmin):
         "value",
     )
 
-    list_filter = (
-        "property__category",
-    )
+    list_filter = ("property__category",)
 
     search_fields = (
         "value",
         "property__name",
         "property__category__name",
     )
-    

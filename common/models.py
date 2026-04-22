@@ -18,7 +18,9 @@ class Region(models.Model):
 
 class District(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name="districts")
+    region = models.ForeignKey(
+        Region, on_delete=models.CASCADE, related_name="districts"
+    )
     name = models.CharField(max_length=100)
     order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -33,9 +35,15 @@ class District(models.Model):
 
 class UserAddress(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="addresses")
-    region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name="addresses")
-    district = models.ForeignKey(District, on_delete=models.PROTECT, related_name="addresses")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="addresses"
+    )
+    region = models.ForeignKey(
+        Region, on_delete=models.PROTECT, related_name="addresses"
+    )
+    district = models.ForeignKey(
+        District, on_delete=models.PROTECT, related_name="addresses"
+    )
     address_line = models.CharField(max_length=255)
     is_default = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,4 +53,3 @@ class UserAddress(models.Model):
 
     def __str__(self):
         return f"{self.user.phone_number} - {self.address_line}"
-    

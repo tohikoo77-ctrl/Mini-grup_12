@@ -7,7 +7,6 @@ from common.models import UserAddress
 User = get_user_model()
 
 
-
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
@@ -58,10 +57,7 @@ class RegisterSerializer(serializers.Serializer):
     phone_number = serializers.CharField(
         max_length=15,
         validators=[
-            RegexValidator(
-                r"^\+?\d{9,15}$",
-                "Telefon raqami noto'g'ri formatda."
-            )
+            RegexValidator(r"^\+?\d{9,15}$", "Telefon raqami noto'g'ri formatda.")
         ],
     )
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
@@ -70,10 +66,7 @@ class RegisterSerializer(serializers.Serializer):
         phone = validated_data["phone_number"]
 
         user, created = User.objects.get_or_create(
-            phone_number=phone,
-            defaults={
-                "email": validated_data.get("email")
-            }
+            phone_number=phone, defaults={"email": validated_data.get("email")}
         )
 
         return user
@@ -88,8 +81,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         max_length=6,
         validators=[
             RegexValidator(
-                r"^\d{6}$",
-                "OTP kod faqat 6 ta raqamdan iborat bo'lishi kerak."
+                r"^\d{6}$", "OTP kod faqat 6 ta raqamdan iborat bo'lishi kerak."
             )
         ],
     )
@@ -104,8 +96,7 @@ class VerifyOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError("User topilmadi")
 
         otp = (
-            UserOTP.objects
-            .filter(user=user, code=code, is_used=False)
+            UserOTP.objects.filter(user=user, code=code, is_used=False)
             .order_by("-created_at")
             .first()
         )

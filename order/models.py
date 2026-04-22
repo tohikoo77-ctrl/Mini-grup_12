@@ -12,8 +12,12 @@ class Order(models.Model):
         CANCELLED = "cancelled", "Bekor qilindi"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders")
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders"
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
     phone = models.CharField(max_length=20)
     shipping_address_snapshot = models.JSONField()
     total_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -34,7 +38,11 @@ class Order(models.Model):
 class OrderItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey("announcements.Announcement", on_delete=models.PROTECT, related_name="order_items")
+    product = models.ForeignKey(
+        "announcements.Announcement",
+        on_delete=models.PROTECT,
+        related_name="order_items",
+    )
     quantity = models.PositiveIntegerField(default=1)
     price_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -47,4 +55,3 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.title} x {self.quantity}"
-    

@@ -14,7 +14,6 @@ from .services import OTPService
 from .models import User
 
 
-
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
@@ -34,7 +33,6 @@ class RegisterView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
-
 
 
 class VerifyOTPView(generics.GenericAPIView):
@@ -63,9 +61,6 @@ class VerifyOTPView(generics.GenericAPIView):
         )
 
 
-
-
-
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -75,4 +70,3 @@ class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
             user=self.request.user
         )
         return profile
-    
