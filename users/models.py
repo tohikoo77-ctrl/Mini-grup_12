@@ -8,6 +8,7 @@ from django.contrib.auth.models import (
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
 
 
 class UserType(models.TextChoices):
@@ -114,3 +115,4 @@ class UserOTP(models.Model):
 
     def __str__(self):
         return f"{self.user.phone_number} OTP"
+    

@@ -1,8 +1,6 @@
 from django.contrib import admin
 from .models import Order, OrderItem
 
-# Register your models here.
-
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -21,11 +19,24 @@ class OrderAdmin(admin.ModelAdmin):
         "created_at",
     )
 
-    list_filter = ("status", "created_at")
-    search_fields = ("user__phone_number", "phone", "id")
+    list_filter = (
+        "status",
+        "created_at",
+    )
+
+    search_fields = (
+        "id",
+        "user__phone_number",
+        "phone",
+    )
+
     ordering = ("-created_at",)
 
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "total_price",
+        "created_at",
+        "updated_at",
+    )
 
     inlines = (OrderItemInline,)
 
@@ -40,7 +51,11 @@ class OrderItemAdmin(admin.ModelAdmin):
         "total_price",
     )
 
-    search_fields = ("product__title", "order__id")
+    search_fields = (
+        "order__id",
+        "product__title",
+    )
+
     list_filter = ("created_at",)
 
-    ordering = ("-created_at",)
+    readonly_fields = ("total_price", "created_at")

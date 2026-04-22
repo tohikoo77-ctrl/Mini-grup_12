@@ -1,10 +1,8 @@
 import uuid
 from django.db import models
 from django.utils.text import slugify
-from category.models import Category
 from django.conf import settings
-
-# Create your models here.
+from category.models import Category
 
 
 class Product(models.Model):
@@ -13,18 +11,12 @@ class Product(models.Model):
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     description = models.TextField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    old_price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_price = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
-    )
+    old_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    discount_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     is_available = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
-    category = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name="products"
-    )
-    seller = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="products"
-    )
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="products")
     rating = models.FloatField(default=0)
     views = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -33,15 +25,22 @@ class Product(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    def generate_slug(self):
+        base = slugify(self.name)
+        slug = base
+        counter = 1
+        while Product.objects.filter(slug=slug).exists():
+            slug = f"{base}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.name)
-            slug = base_slug
-            counter = 1
-            while Product.objects.filter(slug=slug).exclude(id=self.id).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = self.generate_slug()
+
+        if self.old_price and self.price:
+            self.discount_price = self.old_price - self.price
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -50,15 +49,13 @@ class Product(models.Model):
 
 class ProductImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="images"
-    )
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="products/%Y/%m/")
     is_main = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-is_main", "-created_at", "id"]
 
     def __str__(self):
-        return f"{self.product.name}"
+        return self.product.name

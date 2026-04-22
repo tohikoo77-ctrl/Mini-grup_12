@@ -8,6 +8,9 @@ from .models import User, UserOTP
 
 class OTPService:
 
+    OTP_EXPIRE_MINUTES = 2
+    RESEND_COOLDOWN_SECONDS = 30
+
     @staticmethod
     def generate_otp_code():
         return str(random.randint(100000, 999999))
@@ -17,24 +20,36 @@ class OTPService:
 
         user, _ = User.objects.get_or_create(
             phone_number=phone_number,
-            defaults={"is_active": True, "is_verified": False},
+            defaults={
+                "is_active": True,
+                "is_verified": False,
+            },
         )
 
-        # eski OTPlarni disable qilish
+
         user.otps.filter(is_used=False).update(is_used=True)
 
-        # spam protection (30 sec cooldown)
-        last_otp = user.otps.order_by("-created_at").first()
-        if last_otp and (timezone.now() - last_otp.created_at).total_seconds() < 30:
-            return user
+        last_otp = (
+            user.otps
+            .filter(is_used=False)
+            .order_by("-created_at")
+            .first()
+        )
+
+        if last_otp:
+            diff = (timezone.now() - last_otp.created_at).total_seconds()
+            if diff < cls.RESEND_COOLDOWN_SECONDS:
+                return user
 
         code = cls.generate_otp_code()
-        expires_at = timezone.now() + timedelta(minutes=2)
 
-        UserOTP.objects.create(user=user, code=code, expires_at=expires_at)
+        UserOTP.objects.create(
+            user=user,
+            code=code,
+            expires_at=timezone.now() + timedelta(minutes=cls.OTP_EXPIRE_MINUTES),
+        )
 
-        # SMS integration (hozircha mock)
-        print(f"--- SMS SENT TO {phone_number}: {code} ---")
+        print(f"[OTP] {phone_number}: {code}")
 
         return user
 
@@ -42,7 +57,12 @@ class OTPService:
     @transaction.atomic
     def verify_otp(user, code):
 
-        otp = user.otps.filter(code=code, is_used=False).order_by("-created_at").first()
+        otp = (
+            user.otps
+            .filter(code=code, is_used=False)
+            .order_by("-created_at")
+            .first()
+        )
 
         if not otp:
             return False
@@ -50,9 +70,10 @@ class OTPService:
         if otp.is_expired():
             return False
 
-        if otp.mark_used():
-            user.is_verified = True
-            user.save(update_fields=["is_verified"])
-            return True
+        otp.is_used = True
+        otp.save(update_fields=["is_used"])
 
-        return False
+        user.is_verified = True
+        user.save(update_fields=["is_verified"])
+
+        return True

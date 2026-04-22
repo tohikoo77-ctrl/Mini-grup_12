@@ -1,8 +1,6 @@
 from django.contrib import admin
 from .models import Product, ProductImage
 
-# Register your models here.
-
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -12,6 +10,7 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+
     list_display = (
         "name",
         "category",
@@ -52,7 +51,16 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
-    list_display = ("product", "is_main", "created_at")
+
+    list_display = (
+        "product",
+        "is_main",
+        "created_at",
+    )
+
     list_filter = ("is_main",)
-    search_fields = ("product__name",)
-    ordering = ("-created_at",)
+
+    search_fields = (
+        "product__name",
+        "product__category__name",
+    )

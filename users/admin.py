@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, UserProfile, UserOTP
 
-# Register your models here.
+
 
 
 class UserProfileInline(admin.StackedInline):
@@ -19,8 +19,6 @@ class UserProfileInline(admin.StackedInline):
         "bio",
     )
 
-
-# Admin User
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
 
@@ -50,7 +48,7 @@ class UserAdmin(BaseUserAdmin):
 
     inlines = (UserProfileInline,)
 
-    # BaseUserAdmin bilan konflikt bo‘lmasligi uchun togri format
+# Togri formatda koriniwi uc
     fieldsets = (
         (
             "Account",
@@ -78,6 +76,8 @@ class UserAdmin(BaseUserAdmin):
                 "fields": (
                     "is_staff",
                     "is_superuser",
+                    "groups",
+                    "user_permissions",
                 )
             },
         ),
@@ -87,7 +87,6 @@ class UserAdmin(BaseUserAdmin):
                 "fields": (
                     "last_login",
                     "created_at",
-                    "updated_at",
                 )
             },
         ),
@@ -111,16 +110,11 @@ class UserAdmin(BaseUserAdmin):
 
     readonly_fields = (
         "created_at",
-        "updated_at",
         "last_login",
     )
 
 
-# Admin - OTP
-from django.contrib import admin
-from .models import UserOTP
-
-
+#OTP 
 @admin.register(UserOTP)
 class UserOTPAdmin(admin.ModelAdmin):
 
