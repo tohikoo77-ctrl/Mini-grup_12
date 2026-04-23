@@ -45,10 +45,8 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = self.generate_slug()
-
         if self.old_price and self.price:
             self.discount_price = self.old_price - self.price
-
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -65,7 +63,25 @@ class ProductImage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-is_main", "-created_at", "id"]
+        ordering = ["-is_main", "-created_at"]
 
     def __str__(self):
         return self.product.name
+
+
+class Favourite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favourites"
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="favourited_by"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "product")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user}->{self.product}"

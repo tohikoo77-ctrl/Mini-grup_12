@@ -56,7 +56,7 @@ class CategoryProperty(models.Model):
         ordering = ["order"]
 
     def __str__(self):
-        return f"{self.category.name} - {self.name}"
+        return f"{self.category.name}-{self.name}"
 
 
 class PropertyOption(models.Model):
@@ -67,4 +67,4 @@ class PropertyOption(models.Model):
     value = models.CharField(max_length=100)
 
     def __str__(self):
-        return f"{self.property.name}: {self.value}"
+        return f"{self.property.name}-{self.value}"

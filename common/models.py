@@ -30,7 +30,7 @@ class District(models.Model):
         unique_together = ("region", "name")
 
     def __str__(self):
-        return f"{self.region.name} - {self.name}"
+        return f"{self.region.name}-{self.name}"
 
 
 class UserAddress(models.Model):
@@ -52,4 +52,4 @@ class UserAddress(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.user.phone_number} - {self.address_line}"
+        return f"{self.user.phone_number}-{self.address_line}"
