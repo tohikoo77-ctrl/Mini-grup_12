@@ -10,11 +10,12 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-
     list_display = (
         "name",
         "category",
         "price",
+        "old_price",
+        "discount_price",
         "is_available",
         "is_active",
         "rating",
@@ -32,7 +33,8 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = (
         "name",
         "description",
-        "category__name",
+        "category__title",
+        "seller__username",
     )
 
     prepopulated_fields = {"slug": ("name",)}
@@ -40,6 +42,7 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = (ProductImageInline,)
 
     readonly_fields = (
+        "discount_price",
         "rating",
         "views",
         "created_at",
@@ -51,16 +54,20 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
-
     list_display = (
         "product",
         "is_main",
         "created_at",
     )
 
-    list_filter = ("is_main",)
+    list_filter = (
+        "is_main",
+        "created_at",
+    )
 
     search_fields = (
         "product__name",
-        "product__category__name",
+        "product__category__title",
     )
+
+    readonly_fields = ("created_at",)

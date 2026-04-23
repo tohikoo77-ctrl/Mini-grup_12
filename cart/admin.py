@@ -8,9 +8,12 @@ class CartItemInline(admin.TabularInline):
     readonly_fields = ("total_price", "created_at", "updated_at")
 
     def total_price(self, obj):
-        if obj.quantity and obj.price_snapshot:
-            return obj.quantity * obj.price_snapshot
-        return 0
+        return (
+            obj.quantity * obj.price_snapshot
+            if obj.quantity and obj.price_snapshot
+            else 0
+        )
+
     total_price.short_description = "Total Price"
 
 
@@ -36,11 +39,14 @@ class CartItemAdmin(admin.ModelAdmin):
     )
     list_filter = ("created_at",)
     search_fields = ("product__name", "cart__user__phone_number")
-    readonly_fields = ("total_price", "created_at", "updated_at")
     ordering = ("-created_at",)
+    readonly_fields = ("total_price", "created_at", "updated_at")
 
     def total_price(self, obj):
-        if obj.quantity and obj.price_snapshot:
-            return obj.quantity * obj.price_snapshot
-        return 0
+        return (
+            obj.quantity * obj.price_snapshot
+            if obj.quantity and obj.price_snapshot
+            else 0
+        )
+
     total_price.short_description = "Total Price"

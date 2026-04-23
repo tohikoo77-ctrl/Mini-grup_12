@@ -45,12 +45,4 @@ class UserAddressAdmin(admin.ModelAdmin):
     )
     list_filter = ("region", "district", "is_default")
     ordering = ("-created_at",)
-
-    fieldsets = (
-        ("User", {"fields": ("user",)}),
-        ("Location", {"fields": ("region", "district", "address_line")}),
-        ("Settings", {"fields": ("is_default",)}),
-        ("Meta", {"fields": ("created_at",)}),
-    )
-
     readonly_fields = ("created_at",)
