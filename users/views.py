@@ -1,9 +1,10 @@
-from rest_framework import status, generics
+from rest_framework import status, generics, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 
-
+from .models import User, UserProfile
+from .services import OTPService
 from .serializers import (
     RegisterSerializer,
     VerifyOTPSerializer,
@@ -15,23 +16,21 @@ from .models import User
 
 
 class RegisterView(generics.GenericAPIView):
+    """Telefon raqamga OTP kod yuborish"""
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         phone_number = serializer.validated_data["phone_number"]
+        
 
         OTPService.send_otp(phone_number)
-
+        
         return Response(
-            {
-                "message": "Tasdiqlash kodi yuborildi",
-                "phone_number": phone_number,
-            },
-            status=status.HTTP_200_OK,
+            {"message": "Tasdiqlash kodi yuborildi", "phone_number": phone_number},
+            status=status.HTTP_200_OK
         )
 
 
@@ -44,21 +43,23 @@ class VerifyOTPView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.validated_data["user"]
-        otp = serializer.validated_data["otp"]
+        otp_code = serializer.validated_data["otp"]
 
-        OTPService.verify_otp(user, otp.code)
+
+        OTPService.verify_otp(user, otp_code)
+        
+
+        user.is_active = True
+        user.save()
+
 
         refresh = RefreshToken.for_user(user)
-
-        return Response(
-            {
-                "message": "Tasdiqlandi",
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": UserSerializer(user).data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "message": "Muvaffaqiyatli kirildi",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": UserSerializer(user).data,
+        }, status=status.HTTP_200_OK)
 
 
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
