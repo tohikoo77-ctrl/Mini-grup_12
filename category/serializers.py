@@ -5,15 +5,17 @@ from .models import Category, CategoryProperty, PropertyOption
 class PropertyOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyOption
-        fields = ["id", "value"]
+        fields = ["id", "property", "value"] # 'property' maydoni qo'shildi
 
 
 class CategoryPropertySerializer(serializers.ModelSerializer):
     options = PropertyOptionSerializer(many=True, read_only=True)
+    # Postmandan ID yuborganda qabul qilishi uchun:
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     class Meta:
         model = CategoryProperty
-        fields = ["id", "name", "field_type", "is_required", "order", "options"]
+        fields = ["id", "category", "name", "field_type", "is_required", "order", "options"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -36,4 +38,7 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
     def get_children(self, obj):
-        return CategorySerializer(obj.children.all(), many=True).data
+        # Rekursiv ravishda farzand kategoriyalarni olish
+        if obj.children.exists():
+            return CategorySerializer(obj.children.all(), many=True).data
+        return []

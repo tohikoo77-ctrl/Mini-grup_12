@@ -4,12 +4,15 @@ from .models import Cart, CartItem
 
 class CartItemSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
+    # Mahsulot nomini ham ko'rish uchun (ixtiyoriy lekin foydali)
+    product_name = serializers.ReadOnlyField(source='product.name')
 
     class Meta:
         model = CartItem
         fields = (
             "id",
             "product",
+            "product_name",
             "quantity",
             "price_snapshot",
             "total_price",
@@ -51,4 +54,6 @@ class AddCartItemSerializer(serializers.Serializer):
 
 
 class UpdateCartItemSerializer(serializers.Serializer):
+    # MUHIM: Bu yerda product_id bo'lishi shart, aks holda views.py da xato beradi
+    product_id = serializers.UUIDField()
     quantity = serializers.IntegerField(min_value=1)
