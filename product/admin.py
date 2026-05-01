@@ -4,9 +4,10 @@ from .models import Product, ProductImage, Favourite
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1
-    fields = ("image", "is_main", "created_at")
+    extra = 0
     readonly_fields = ("created_at",)
+    fields = ("image", "is_main", "created_at")
+    show_change_link = True
 
 
 @admin.register(Product)
@@ -35,26 +36,51 @@ class ProductAdmin(admin.ModelAdmin):
 
     search_fields = (
         "name",
+        "slug",
         "description",
         "category__name",
         "seller__username",
+        "seller__email",
     )
 
-    list_select_related = ("category", "seller")
+    ordering = ("-created_at",)
 
     prepopulated_fields = {"slug": ("name",)}
+
+    list_select_related = ("category", "seller")
 
     inlines = (ProductImageInline,)
 
     readonly_fields = (
         "discount_price",
-        "rating",
         "views",
         "created_at",
         "updated_at",
     )
 
-    ordering = ("-created_at",)
+    fieldsets = (
+        ("Basic Info", {
+            "fields": ("name", "slug", "description")
+        }),
+        ("Pricing", {
+            "fields": ("price", "old_price", "discount_price")
+        }),
+        ("Relations", {
+            "fields": ("category", "seller")
+        }),
+        ("Status", {
+            "fields": ("is_available", "is_active")
+        }),
+        ("Stats", {
+            "fields": ("rating", "views")
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at")
+        }),
+    )
+
+    save_on_top = True
+    list_per_page = 25
 
 
 @admin.register(ProductImage)
@@ -72,15 +98,9 @@ class ProductImageAdmin(admin.ModelAdmin):
 
     search_fields = (
         "product__name",
-        "product__category__name",
-        "product__seller__username",
     )
 
     list_select_related = ("product",)
-
-    readonly_fields = ("created_at",)
-
-    ordering = ("-created_at",)
 
 
 @admin.register(Favourite)
@@ -92,18 +112,20 @@ class FavouriteAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
-        "user",
         "created_at",
+        "user",
+        "product",
     )
 
     search_fields = (
         "user__username",
         "product__name",
-        "product__category__name",
     )
 
-    list_select_related = ("user", "product")
+    list_select_related = (
+        "user",
+        "product",
+    )
 
     readonly_fields = ("created_at",)
-
-    ordering = ("-created_at",)
+    
