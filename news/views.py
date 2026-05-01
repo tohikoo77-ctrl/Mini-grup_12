@@ -35,7 +35,6 @@ class NewsViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def published(self, request):
         """Faqat e'lon qilingan yangiliklarni olish"""
-        # Modelingizda 'is_active' yoki 'is_published' borligini tekshiring
-        data = News.objects.filter(is_active=True) 
+        data = News.objects.filter(is_published=True)
         serializer = self.get_serializer(data, many=True)
         return Response(serializer.data)

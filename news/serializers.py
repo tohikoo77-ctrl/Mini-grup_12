@@ -13,6 +13,4 @@ class NewsSerializer(serializers.ModelSerializer):
 class NewsCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
-        # УДАЛИЛИ is_active, так как его нет в модели. 
-        # Также убрали author, так как он заполняется в views.py
         fields = ("title", "content", "category", "image") 
