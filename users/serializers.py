@@ -1,23 +1,36 @@
-from rest_framework import serializers
+import re
+from django.utils import timezone
+from django.db import transaction
 from django.contrib.auth import get_user_model
-from django.core.validators import RegexValidator
+from rest_framework import serializers
+
 from .models import UserProfile, UserOTP
 from common.models import UserAddress
 
 User = get_user_model()
 
+PHONE_REGEX = re.compile(r"^\+\d{9,15}$")
+OTP_REGEX = re.compile(r"^\d{6}$")
+
+
+def clean_phone(value):
+    value = re.sub(r"\s+", "", (value or "").strip())
+    if not PHONE_REGEX.match(value):
+        raise serializers.ValidationError({"code": "INVALID_PHONE"})
+    return value
+
+
+def clean_otp(value):
+    value = (value or "").strip()
+    if not OTP_REGEX.match(value):
+        raise serializers.ValidationError({"code": "INVALID_OTP"})
+    return value
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = (
-            "id",
-            "first_name",
-            "last_name",
-            "gender",
-            "birth_date",
-            "bio",
-        )
+        fields = ("id", "first_name", "last_name", "gender", "birth_date", "bio")
 
 
 class UserAddressSerializer(serializers.ModelSerializer):
@@ -52,73 +65,80 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-# Register uc
-class RegisterSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(
-        max_length=15,
-        validators=[
-            RegexValidator(r"^\+?\d{9,15}$", "Telefon raqami noto'g'ri formatda.")
-        ],
-    )
-    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
+class RegisterSerializer(serializers.ModelSerializer):
+    phone_number = serializers.CharField(validators=[clean_phone])
+    email = serializers.EmailField(required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ("phone_number", "email")
+
+    def validate_email(self, value):
+        return (value or "").strip().lower()
 
     def create(self, validated_data):
         phone = validated_data["phone_number"]
 
         user, created = User.objects.get_or_create(
-            phone_number=phone, defaults={"email": validated_data.get("email")}
+            phone_number=phone,
+            defaults={
+                "email": validated_data.get("email", ""),
+                "is_active": False,
+                "is_verified": False,
+            },
         )
+
+        if not created and validated_data.get("email"):
+            user.email = validated_data["email"]
+            user.save(update_fields=["email"])
 
         return user
 
 
-# OTP
-class VerifyOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=15)
+class SendOTPSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(validators=[clean_phone])
 
-    otp_code = serializers.CharField(
-        min_length=6,
-        max_length=6,
-        validators=[
-            RegexValidator(
-                r"^\d{6}$", "OTP kod faqat 6 ta raqamdan iborat bo'lishi kerak."
-            )
-        ],
-    )
+
+class VerifyOTPSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(validators=[clean_phone])
+    otp_code = serializers.CharField(validators=[clean_otp])
 
     def validate(self, attrs):
         phone = attrs["phone_number"]
         code = attrs["otp_code"]
 
-        try:
-            user = User.objects.get(phone_number=phone)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("User topilmadi")
+        user = User.objects.filter(phone_number=phone).first()
+        if not user:
+            raise serializers.ValidationError({"code": "USER_NOT_FOUND"})
 
         otp = (
-            UserOTP.objects.filter(user=user, code=code, is_used=False)
+            UserOTP.objects.filter(
+                user=user,
+                code=code,
+                is_used=False,
+                expires_at__gt=timezone.now(),
+            )
             .order_by("-created_at")
             .first()
         )
 
-        if not otp:
-            raise serializers.ValidationError("OTP noto‘g‘ri")
-
-        if otp.is_expired():
-            raise serializers.ValidationError("OTP eskirgan")
+        if not otp or otp.is_expired() or otp.is_used:
+            raise serializers.ValidationError({"code": "OTP_INVALID_OR_EXPIRED"})
 
         attrs["user"] = user
         attrs["otp"] = otp
-
         return attrs
 
     def save(self, **kwargs):
         user = self.validated_data["user"]
         otp = self.validated_data["otp"]
 
-        otp.mark_used()
+        with transaction.atomic():
+            otp.is_used = True
+            otp.save(update_fields=["is_used"])
 
-        user.is_verified = True
-        user.save()
+            user.is_verified = True
+            user.is_active = True
+            user.save(update_fields=["is_verified", "is_active"])
 
         return user

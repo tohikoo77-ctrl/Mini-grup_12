@@ -1,8 +1,9 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import F
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 from .models import Product, Favourite
 from .serializers import (
@@ -12,39 +13,41 @@ from .serializers import (
     FavouriteCreateSerializer,
 )
 
+
+# =========================
+# 🛍 PRODUCT VIEWSET
+# =========================
 class ProductViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = Product.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    queryset = Product.objects.select_related("category", "seller")
 
     def get_serializer_class(self):
-        # Yaratish va yangilash uchun alohida serializer
         if self.action in ["create", "update", "partial_update"]:
             return ProductCreateUpdateSerializer
         return ProductSerializer
 
     def perform_create(self, serializer):
-        # Mahsulot yaratuvchisini (seller) avtomatik aniqlash
         serializer.save(seller=self.request.user)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def my_products(self, request):
-        """Foydalanuvchining o'zi qo'shgan mahsulotlar ro'yxati"""
         products = Product.objects.filter(seller=request.user)
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"])
-    def view(self, request, pk=None):
-        """Mahsulot ko'rilganlar sonini oshirish"""
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def increment_view(self, request, pk=None):
+        Product.objects.filter(pk=pk).update(views=F("views") + 1)
         product = self.get_object()
-        product.views += 1
-        product.save()
-        return Response({"views": product.views})
+        return Response({"views": product.views}, status=status.HTTP_200_OK)
 
 
+# =========================
+# ❤️ FAVOURITE VIEWSET
+# =========================
 class FavouriteViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Favourite.objects.all()
+    queryset = Favourite.objects.select_related("user", "product")
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -52,54 +55,31 @@ class FavouriteViewSet(viewsets.ModelViewSet):
         return FavouriteSerializer
 
     def get_queryset(self):
-        # Faqat joriy foydalanuvchining saralanganlarini qaytarish
         return Favourite.objects.filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        """
-        Saralanganlarga qo'shish yoki o'chirish (Toggle mantiqi)
-        Postman'da: {"product": "UUID_KODI"} yuboriladi
-        """
-        # Serializer'dan yoki to'g'ridan-to'g'ri datadan ID ni olamiz
-        product_id = request.data.get("product") or request.data.get("product_id")
-        
+        product_id = request.data.get("product")
+
         if not product_id:
             return Response(
-                {"error": "Product ID is required. Send 'product' field."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "product field is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            
-        product = get_object_or_404(Product, id=product_id)
 
-        # get_or_create: bo'lsa oladi, bo'lmasa yaratadi
-        fav, created = Favourite.objects.get_or_create(
-            user=request.user, 
-            product=product
-        )
+        product = get_object_or_404(Product, pk=product_id)
 
-        if not created:
-            # Agar allaqachon bor bo'lsa, o'chirib tashlaymiz (Toggle)
-            fav.delete()
+        favourite = Favourite.objects.filter(user=request.user, product=product)
+
+        if favourite.exists():
+            favourite.delete()
             return Response(
-                {"message": "Removed from favourites", "is_favourite": False}, 
-                status=status.HTTP_200_OK
+                {"message": "Removed from favourites", "is_favourite": False},
+                status=status.HTTP_200_OK,
             )
+
+        Favourite.objects.create(user=request.user, product=product)
 
         return Response(
-            {"message": "Added to favourites", "is_favourite": True}, 
-            status=status.HTTP_201_CREATED
+            {"message": "Added to favourites", "is_favourite": True},
+            status=status.HTTP_201_CREATED,
         )
-
-    @action(detail=False, methods=["get"])
-    def my_favourites(self, request):
-        """Mening barcha saralangan mahsulotlarim"""
-        favs = self.get_queryset()
-        serializer = self.get_serializer(favs, many=True)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["delete"])
-    def remove(self, request, pk=None):
-        """Saralanganlardan aniq birini ID bo'yicha o'chirish"""
-        fav = self.get_object()
-        fav.delete()
-        return Response({"message": "Deleted from favourites"}, status=status.HTTP_204_NO_CONTENT)

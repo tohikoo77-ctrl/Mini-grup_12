@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import News
 from .serializers import NewsSerializer, NewsCreateUpdateSerializer
 
+
 class NewsViewSet(viewsets.ModelViewSet):
     queryset = News.objects.all()
 
@@ -36,6 +37,6 @@ class NewsViewSet(viewsets.ModelViewSet):
     def published(self, request):
         """Faqat e'lon qilingan yangiliklarni olish"""
         # Modelingizda 'is_active' yoki 'is_published' borligini tekshiring
-        data = News.objects.filter(is_active=True) 
+        data = News.objects.filter(is_active=True)
         serializer = self.get_serializer(data, many=True)
         return Response(serializer.data)

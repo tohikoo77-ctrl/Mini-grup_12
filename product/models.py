@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from category.models import Category
 
 
@@ -15,38 +16,55 @@ class Product(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     discount_price = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
+        max_digits=10, decimal_places=2, null=True, blank=True
     )
     is_available = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
+
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products"
     )
+
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="products"
     )
-    rating = models.FloatField(default=0)
+
+    rating = models.FloatField(
+        default=0, validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
+
     views = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["price"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def generate_slug(self):
-        base = slugify(self.name)
-        slug = base
+        base_slug = slugify(self.name)
+        slug = base_slug
         counter = 1
+
         while Product.objects.filter(slug=slug).exists():
-            slug = f"{base}-{counter}"
+            slug = f"{base_slug}-{counter}"
             counter += 1
+
         return slug
 
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = self.generate_slug()
-        if self.old_price and self.price:
+
+        if self.old_price and self.old_price > self.price:
             self.discount_price = self.old_price - self.price
+        else:
+            self.discount_price = None
+
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -58,6 +76,7 @@ class ProductImage(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="images"
     )
+
     image = models.ImageField(upload_to="products/%Y/%m/")
     is_main = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -65,8 +84,16 @@ class ProductImage(models.Model):
     class Meta:
         ordering = ["-is_main", "-created_at"]
 
+    def save(self, *args, **kwargs):
+        if self.is_main:
+            ProductImage.objects.filter(product=self.product, is_main=True).exclude(
+                id=self.id
+            ).update(is_main=False)
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.product.name
+        return f"{self.product.name} image"
 
 
 class Favourite(models.Model):
@@ -80,8 +107,14 @@ class Favourite(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "product")
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="unique_favourite")
+        ]
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["product"]),
+        ]
 
     def __str__(self):
-        return f"{self.user}->{self.product}"
+        return f"{self.user} -> {self.product}"

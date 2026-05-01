@@ -9,11 +9,12 @@ from .serializers import (
     UserAddressCreateSerializer,
 )
 
+
 class RegionViewSet(viewsets.ModelViewSet):
     queryset = Region.objects.all()
     serializer_class = RegionSerializer
     # Viloyatlarni hamma ko'ra olishi uchun AllowAny qilishni tavsiya qilaman
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
 
 
 class DistrictViewSet(viewsets.ModelViewSet):

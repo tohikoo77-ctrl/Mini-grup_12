@@ -1,21 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
 from .models import User, UserProfile, UserOTP
-
-
-class UserProfileInline(admin.StackedInline):
-    model = UserProfile
-    can_delete = False
-    verbose_name_plural = "Profile"
-
-    fields = (
-        "first_name",
-        "last_name",
-        "avatar",
-        "gender",
-        "birth_date",
-        "bio",
-    )
 
 
 @admin.register(User)
@@ -36,6 +22,7 @@ class UserAdmin(BaseUserAdmin):
         "is_verified",
         "is_active",
         "is_staff",
+        "created_at",
     )
 
     search_fields = (
@@ -45,12 +32,15 @@ class UserAdmin(BaseUserAdmin):
 
     ordering = ("-created_at",)
 
-    inlines = (UserProfileInline,)
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "last_login",
+    )
 
-    # Togri formatda koriniwi uc
     fieldsets = (
         (
-            "Account",
+            "Account Info",
             {
                 "fields": (
                     "phone_number",
@@ -81,11 +71,12 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         (
-            "Important dates",
+            "Important Dates",
             {
                 "fields": (
                     "last_login",
                     "created_at",
+                    "updated_at",
                 )
             },
         ),
@@ -102,18 +93,56 @@ class UserAdmin(BaseUserAdmin):
                     "password1",
                     "password2",
                     "user_type",
+                    "is_verified",
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
                 ),
             },
         ),
     )
 
-    readonly_fields = (
-        "created_at",
-        "last_login",
+    filter_horizontal = (
+        "groups",
+        "user_permissions",
     )
 
+    list_per_page = 25
+    date_hierarchy = "created_at"
+    show_full_result_count = True
 
-# OTP
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "user",
+        "first_name",
+        "last_name",
+        "gender",
+        "created_at",
+    )
+
+    list_filter = (
+        "gender",
+        "created_at",
+    )
+
+    search_fields = (
+        "user__phone_number",
+        "first_name",
+        "last_name",
+    )
+
+    ordering = ("-created_at",)
+
+    readonly_fields = ("created_at",)
+
+    list_per_page = 25
+
+    list_select_related = ("user",)
+
+
 @admin.register(UserOTP)
 class UserOTPAdmin(admin.ModelAdmin):
 
@@ -125,11 +154,25 @@ class UserOTPAdmin(admin.ModelAdmin):
         "created_at",
     )
 
-    list_filter = ("is_used",)
+    list_filter = (
+        "is_used",
+        "expires_at",
+        "created_at",
+    )
 
     search_fields = (
         "user__phone_number",
         "code",
     )
 
-    readonly_fields = ("created_at",)
+    ordering = ("-created_at",)
+
+    readonly_fields = (
+        "code",
+        "created_at",
+        "expires_at",
+    )
+
+    list_per_page = 25
+    date_hierarchy = "created_at"
+    list_select_related = ("user",)

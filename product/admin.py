@@ -5,6 +5,7 @@ from .models import Product, ProductImage, Favourite
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
+    fields = ("image", "is_main", "created_at")
     readonly_fields = ("created_at",)
 
 
@@ -13,6 +14,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "category",
+        "seller",
         "price",
         "old_price",
         "discount_price",
@@ -27,15 +29,18 @@ class ProductAdmin(admin.ModelAdmin):
         "is_available",
         "is_active",
         "category",
+        "seller",
         "created_at",
     )
 
     search_fields = (
         "name",
         "description",
-        "category__title",
+        "category__name",
         "seller__username",
     )
+
+    list_select_related = ("category", "seller")
 
     prepopulated_fields = {"slug": ("name",)}
 
@@ -67,30 +72,38 @@ class ProductImageAdmin(admin.ModelAdmin):
 
     search_fields = (
         "product__name",
-        "product__category__title",
+        "product__category__name",
+        "product__seller__username",
     )
+
+    list_select_related = ("product",)
 
     readonly_fields = ("created_at",)
 
+    ordering = ("-created_at",)
 
 
 @admin.register(Favourite)
 class FavouriteAdmin(admin.ModelAdmin):
     list_display = (
-        "user", 
-        "product", 
-        "created_at"
+        "user",
+        "product",
+        "created_at",
     )
 
     list_filter = (
-        "created_at",
         "user",
+        "created_at",
     )
 
     search_fields = (
-        "user__username", 
-        "product__name"
+        "user__username",
+        "product__name",
+        "product__category__name",
     )
 
+    list_select_related = ("user", "product")
+
     readonly_fields = ("created_at",)
+
     ordering = ("-created_at",)

@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from .models import News
 
+
 class NewsSerializer(serializers.ModelSerializer):
-    author_username = serializers.ReadOnlyField(source='author.username')
+    author_username = serializers.ReadOnlyField(source="author.username")
 
     class Meta:
         model = News
@@ -13,6 +14,6 @@ class NewsSerializer(serializers.ModelSerializer):
 class NewsCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
-        # УДАЛИЛИ is_active, так как его нет в модели. 
+        # УДАЛИЛИ is_active, так как его нет в модели.
         # Также убрали author, так как он заполняется в views.py
-        fields = ("title", "content", "category", "image") 
+        fields = ("title", "content", "category", "image")

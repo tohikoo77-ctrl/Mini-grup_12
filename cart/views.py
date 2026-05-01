@@ -45,10 +45,10 @@ class CartViewSet(viewsets.ModelViewSet):
             item.quantity += quantity
             item.save()
 
-        return Response({
-            "message": "added", 
-            "total_price": cart.get_total_price()
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "added", "total_price": cart.get_total_price()},
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=["delete"])
     def remove_item(self, request):
@@ -60,10 +60,10 @@ class CartViewSet(viewsets.ModelViewSet):
         item = get_object_or_404(CartItem, cart=cart, product__id=product_id)
         item.delete()
 
-        return Response({
-            "message": "removed", 
-            "total_price": cart.get_total_price()
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "removed", "total_price": cart.get_total_price()},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["patch"])
     def update_item(self, request):
@@ -80,7 +80,7 @@ class CartViewSet(viewsets.ModelViewSet):
         item.quantity = quantity
         item.save()
 
-        return Response({
-            "message": "updated", 
-            "total_price": cart.get_total_price()
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "updated", "total_price": cart.get_total_price()},
+            status=status.HTTP_200_OK,
+        )

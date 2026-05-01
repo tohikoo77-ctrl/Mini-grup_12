@@ -1,0 +1,16 @@
+[flake8]
+# Quyidagi fayl va papkalarni tekshirmaymiz
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    migrations,
+    manage.py,
+    # Agar tests.py larni tozalashni xohlamasangiz, ularni ham chiqarib tashlang:
+    *tests.py*
+
+# Qator uzunligini 110 gacha kengaytiramiz (chunki settings.py dagi qatorlar 107-109 ekan)
+max-line-length = 110
+
+# Ba'zi bir xatolarni butunlay e'tiborsiz qoldirish (ixtiyoriy)
+# ignore = F401
