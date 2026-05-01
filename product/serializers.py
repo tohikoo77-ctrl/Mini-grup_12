@@ -31,7 +31,13 @@ class ProductSerializer(serializers.ModelSerializer):
             "updated_at",
             "images",
         )
-        read_only_fields = ("slug", "discount_price", "rating", "views")
+        read_only_fields = (
+            "slug",
+            "discount_price",
+            "rating",
+            "views",
+            "seller",
+        )
 
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
@@ -55,4 +61,4 @@ class FavouriteSerializer(serializers.ModelSerializer):
 
 
 class FavouriteCreateSerializer(serializers.Serializer):
-    product_id = serializers.UUIDField()
+    product = serializers.UUIDField()

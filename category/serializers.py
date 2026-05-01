@@ -5,7 +5,7 @@ from .models import Category, CategoryProperty, PropertyOption
 class PropertyOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyOption
-        fields = ["id", "property", "value"] # 'property' maydoni qo'shildi
+        fields = ["id", "property", "value"]  # 'property' maydoni qo'shildi
 
 
 class CategoryPropertySerializer(serializers.ModelSerializer):
@@ -15,7 +15,15 @@ class CategoryPropertySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CategoryProperty
-        fields = ["id", "category", "name", "field_type", "is_required", "order", "options"]
+        fields = [
+            "id",
+            "category",
+            "name",
+            "field_type",
+            "is_required",
+            "order",
+            "options",
+        ]
 
 
 class CategorySerializer(serializers.ModelSerializer):

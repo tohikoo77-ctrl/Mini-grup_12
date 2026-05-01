@@ -5,7 +5,7 @@ from .models import Cart, CartItem
 class CartItemSerializer(serializers.ModelSerializer):
     total_price = serializers.SerializerMethodField()
     # Mahsulot nomini ham ko'rish uchun (ixtiyoriy lekin foydali)
-    product_name = serializers.ReadOnlyField(source='product.name')
+    product_name = serializers.ReadOnlyField(source="product.name")
 
     class Meta:
         model = CartItem
