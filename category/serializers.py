@@ -5,34 +5,48 @@ from .models import Category, CategoryProperty, PropertyOption
 class PropertyOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyOption
-        fields = ["id", "property", "value"]  # 'property' maydoni qo'shildi
+        fields = (
+            "id",
+            "value",
+        )
 
 
 class CategoryPropertySerializer(serializers.ModelSerializer):
     options = PropertyOptionSerializer(many=True, read_only=True)
-    # Postmandan ID yuborganda qabul qilishi uchun:
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     class Meta:
         model = CategoryProperty
-        fields = [
+        fields = (
             "id",
-            "category",
             "name",
             "field_type",
             "is_required",
             "order",
             "options",
-        ]
+        )
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategoryListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = (
+            "id",
+            "name",
+            "slug",
+            "parent",
+            "is_active",
+            "order",
+        )
+
+
+class CategoryDetailSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
     properties = CategoryPropertySerializer(many=True, read_only=True)
+    full_path = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = [
+        fields = (
             "id",
             "name",
             "slug",
@@ -40,13 +54,35 @@ class CategorySerializer(serializers.ModelSerializer):
             "image",
             "icon",
             "is_active",
+            "is_deleted",
             "order",
+            "full_path",
             "children",
             "properties",
-        ]
+        )
 
     def get_children(self, obj):
-        # Rekursiv ravishda farzand kategoriyalarni olish
-        if obj.children.exists():
-            return CategorySerializer(obj.children.all(), many=True).data
-        return []
+        # SAFE: works with prefetch or normal queryset
+        children = getattr(obj, "children_all", None) or obj.children.all()
+
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "slug": c.slug,
+                "is_active": c.is_active,
+                "order": c.order,
+            }
+            for c in children
+        ]
+
+    def get_full_path(self, obj):
+        names = []
+        current = obj
+
+        while current:
+            names.append(current.name)
+            current = current.parent
+
+        return " > ".join(reversed(names))
+    

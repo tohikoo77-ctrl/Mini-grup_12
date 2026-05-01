@@ -1,15 +1,17 @@
 from rest_framework import serializers
-from .models import Product, ProductImage, Favourite
+from .models import Product, ProductImage
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ("id", "image", "is_main", "created_at")
+        fields = ("id", "image", "is_main")
 
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    seller_name = serializers.CharField(source="seller.username", read_only=True)
 
     class Meta:
         model = Product
@@ -24,41 +26,12 @@ class ProductSerializer(serializers.ModelSerializer):
             "is_available",
             "is_active",
             "category",
+            "category_name",
             "seller",
+            "seller_name",
             "rating",
             "views",
-            "created_at",
-            "updated_at",
             "images",
+            "created_at",
         )
-        read_only_fields = (
-            "slug",
-            "discount_price",
-            "rating",
-            "views",
-            "seller",
-        )
-
-
-class ProductCreateUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = (
-            "name",
-            "description",
-            "price",
-            "old_price",
-            "category",
-        )
-
-
-class FavouriteSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-
-    class Meta:
-        model = Favourite
-        fields = ("id", "product", "created_at")
-
-
-class FavouriteCreateSerializer(serializers.Serializer):
-    product = serializers.UUIDField()
+        
