@@ -4,20 +4,25 @@ from django.db.models import F
 
 from .models import Product
 from .serializers import ProductSerializer
+from .filters import ProductFilter
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
-        return Product.objects.select_related(
+        qs = Product.objects.select_related(
             "category",
             "seller"
         ).prefetch_related("images")
 
+        # 🔥 FILTER LAYER
+        return ProductFilter(qs, self.request.query_params).filter()
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
 
+        # ⚡ SAFE VIEWS INCREMENT (race-safe)
         Product.objects.filter(pk=instance.pk).update(
             views=F("views") + 1
         )
