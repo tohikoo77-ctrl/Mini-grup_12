@@ -90,10 +90,21 @@ class MeView(generics.RetrieveAPIView):
         return self.request.user
 
 
-class UserProfileView(generics.RetrieveUpdateAPIView):
+class UserProfileView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        user = instance.user
+        self.perform_destroy(instance)
+        user.delete()
+
+        return Response(
+            {"status": "success", "code": "PROFILE_DELETED"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
