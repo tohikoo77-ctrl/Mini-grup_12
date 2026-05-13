@@ -14,5 +14,5 @@ router.register(r"options", PropertyOptionViewSet, basename="property-option")
 
 
 urlpatterns = [
-    path("api/v1/category/", include(router.urls)),
+    path("api/v1/", include(router.urls)),
 ]

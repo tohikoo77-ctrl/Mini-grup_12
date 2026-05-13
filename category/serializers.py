@@ -11,6 +11,17 @@ class PropertyOptionSerializer(serializers.ModelSerializer):
         )
 
 
+class PropertyOptionCreateSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = PropertyOption
+        fields = (
+            "id",
+            "property",
+            "value",
+        )
+
+
 class CategoryPropertySerializer(serializers.ModelSerializer):
     options = PropertyOptionSerializer(many=True, read_only=True)
 
@@ -23,6 +34,20 @@ class CategoryPropertySerializer(serializers.ModelSerializer):
             "is_required",
             "order",
             "options",
+        )
+
+
+class CategoryPropertyCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CategoryProperty
+        fields = (
+            "id",
+            "category",      
+            "name",
+            "field_type",
+            "is_required",
+            "order",
         )
 
 

@@ -1,9 +1,9 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework.response import Response
 from django.db.models import F
-
-from .models import Product
-from .serializers import ProductSerializer
+from rest_framework.permissions import IsAuthenticated
+from .models import Product, Favourite
+from .serializers import ProductSerializer, FavouriteListSerializer, FavouriteCreateSerializer
 from .filters import ProductFilter
 
 
@@ -32,3 +32,21 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
+
+class FavouriteViewSet(mixins.ListModelMixin,
+                       mixins.CreateModelMixin,
+                       mixins.DestroyModelMixin,
+                       viewsets.GenericViewSet):
+   
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'  
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return FavouriteCreateSerializer
+        return FavouriteListSerializer
+
+    def get_queryset(self):
+        return Favourite.objects.filter(user=self.request.user).select_related(
+            'product', 'product__category', 'product__seller'
+        ).prefetch_related('product__images')
