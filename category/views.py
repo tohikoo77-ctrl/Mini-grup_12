@@ -6,7 +6,9 @@ from .serializers import (
     CategoryListSerializer,
     CategoryDetailSerializer,
     CategoryPropertySerializer,
+    CategoryPropertyCreateSerializer,
     PropertyOptionSerializer,
+    PropertyOptionCreateSerializer,
 )
 
 
@@ -36,7 +38,12 @@ class CategoryPropertyViewSet(viewsets.ModelViewSet):
         .prefetch_related("options")
     )
 
-    serializer_class = CategoryPropertySerializer
+    def get_serializer_class(self):
+        # Agar so'rov turi yaratish yoki o'zgartirish bo'lsa
+        if self.action in ["create", "update", "partial_update"]:
+            return CategoryPropertyCreateSerializer
+        # Ro'yxatni ko'rish (GET) uchun eski serializer qoladi
+        return CategoryPropertySerializer
 
 
 class PropertyOptionViewSet(viewsets.ModelViewSet):
@@ -45,5 +52,9 @@ class PropertyOptionViewSet(viewsets.ModelViewSet):
         .select_related("property", "property__category")
     )
 
-    serializer_class = PropertyOptionSerializer
+    def get_serializer_class(self):
+
+        if self.action in ["create", "update", "partial_update"]:
+            return PropertyOptionCreateSerializer
+        return PropertyOptionSerializer
     
