@@ -1,14 +1,16 @@
 import uuid
 import random
 from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
+from django.conf import settings
+from django.core.validators import RegexValidator
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
-from django.core.validators import RegexValidator
-from django.utils import timezone
 
 
 class UserType(models.TextChoices):
@@ -26,41 +28,71 @@ class UserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:
             raise ValueError("Phone number is required")
-        user = self.model(phone_number=phone_number, **extra_fields)
+
+        user = self.model(
+            phone_number=phone_number,
+            **extra_fields
+        )
+
         user.set_password(password)
         user.save(using=self._db)
+
         return user
 
     def create_superuser(self, phone_number, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_verified", True)
-        extra_fields.setdefault("is_active", True)  # Superuser aktiv bo'lishi kerak
+        extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("user_type", UserType.ADMIN)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True")
+
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True")
-        return self.create_user(phone_number, password, **extra_fields)
+
+        return self.create_user(
+            phone_number,
+            password,
+            **extra_fields
+        )
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
     phone_number = models.CharField(
         max_length=15,
         unique=True,
-        db_index=True,
-        validators=[RegexValidator(r"^\+\d{9,15}$")],
+        validators=[
+            RegexValidator(
+                regex=r"^\+?[1-9]\d{8,14}$",
+                message="Phone number must be valid"
+            )
+        ],
     )
-    email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
+
+    email = models.EmailField(
+        blank=True,
+        null=True
+    )
+
     user_type = models.CharField(
-        max_length=10, choices=UserType.choices, default=UserType.USER, db_index=True
+        max_length=10,
+        choices=UserType.choices,
+        default=UserType.USER
     )
-    is_active = models.BooleanField(default=False, db_index=True)
+
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
-    is_verified = models.BooleanField(default=False, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    is_verified = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
@@ -69,9 +101,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["phone_number"]),
-            models.Index(fields=["email"]),
+            models.Index(fields=["user_type"]),
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["is_verified"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
@@ -79,20 +115,62 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class UserProfile(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+
     user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="profile", db_index=True
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile"
     )
-    # Mana bu yerda default='' qo'shildi, migratsiya savol bermasligi uchun:
-    first_name = models.CharField(max_length=100, blank=True, default="")
-    last_name = models.CharField(max_length=100, blank=True, default="")
-    avatar = models.ImageField(upload_to="avatars/%Y/%m", blank=True, null=True)
+
+    first_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default=""
+    )
+
+    last_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default=""
+    )
+
+    avatar = models.ImageField(
+        upload_to="users/avatars/%Y/%m/",
+        blank=True,
+        null=True
+    )
+
     gender = models.CharField(
-        max_length=10, choices=GenderType.choices, blank=True, null=True, db_index=True
+        max_length=10,
+        choices=GenderType.choices,
+        blank=True,
+        null=True
     )
-    bio = models.TextField(blank=True, default="")
-    birth_date = models.DateField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    bio = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    birth_date = models.DateField(
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["gender"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def __str__(self):
         return f"{self.user.phone_number} profile"
@@ -107,43 +185,74 @@ def otp_expiry():
 
 
 class UserOTP(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="otps", db_index=True
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
     )
-    code = models.CharField(max_length=6, db_index=True)
-    is_used = models.BooleanField(default=False, db_index=True)
-    expires_at = models.DateTimeField(default=otp_expiry, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="otps"
+    )
+
+    code = models.CharField(
+        max_length=6,
+        validators=[
+            RegexValidator(
+                regex=r"^\d{6}$",
+                message="OTP must contain 6 digits"
+            )
+        ]
+    )
+
+    is_used = models.BooleanField(default=False)
+
+    expires_at = models.DateTimeField(
+        default=otp_expiry
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "code"],
+                name="unique_user_otp_code"
+            )
+        ]
+
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["code"]),
+            models.Index(fields=["is_used"]),
+            models.Index(fields=["expires_at"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.pk and not self.code:
             self.code = generate_otp()
+
         super().save(*args, **kwargs)
 
     def is_expired(self):
         return timezone.now() >= self.expires_at
 
     def is_valid(self):
-        return not self.is_used and not self.is_expired()
+        return (
+            not self.is_used and
+            not self.is_expired()
+        )
 
     def mark_used(self):
         if not self.is_used:
             self.is_used = True
             self.save(update_fields=["is_used"])
 
-    class Meta:
-        ordering = ["-created_at"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "code"], name="unique_user_otp_code"
-            )
-        ]
-        indexes = [
-            models.Index(fields=["user", "code"]),
-            models.Index(fields=["expires_at"]),
-            models.Index(fields=["is_used"]),
-        ]
-
     def __str__(self):
-        return f"{self.user.phone_number}-{self.code}"
+        return f"{self.user.phone_number} - {self.code}"
+    

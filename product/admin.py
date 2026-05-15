@@ -1,12 +1,22 @@
 from django.contrib import admin
-from .models import Product, ProductImage, Favourite
+
+from .models import Favourite, Product, ProductImage
 
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 0
-    readonly_fields = ("created_at",)
-    fields = ("image", "is_main", "created_at")
+
+    fields = (
+        "image",
+        "is_main",
+        "created_at",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
+
     show_change_link = True
 
 
@@ -26,12 +36,17 @@ class ProductAdmin(admin.ModelAdmin):
         "created_at",
     )
 
+    list_display_links = (
+        "name",
+    )
+
     list_filter = (
         "is_available",
         "is_active",
         "category",
         "seller",
         "created_at",
+        "updated_at",
     )
 
     search_fields = (
@@ -43,13 +58,14 @@ class ProductAdmin(admin.ModelAdmin):
         "seller__email",
     )
 
-    ordering = ("-created_at",)
+    ordering = (
+        "-created_at",
+    )
 
-    prepopulated_fields = {"slug": ("name",)}
-
-    list_select_related = ("category", "seller")
-
-    inlines = (ProductImageInline,)
+    list_select_related = (
+        "category",
+        "seller",
+    )
 
     readonly_fields = (
         "discount_price",
@@ -58,29 +74,83 @@ class ProductAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
+    prepopulated_fields = {
+        "slug": ("name",),
+    }
+
+    autocomplete_fields = (
+        "category",
+        "seller",
+    )
+
+    inlines = (
+        ProductImageInline,
+    )
+
     fieldsets = (
-        ("Basic Info", {
-            "fields": ("name", "slug", "description")
-        }),
-        ("Pricing", {
-            "fields": ("price", "old_price", "discount_price")
-        }),
-        ("Relations", {
-            "fields": ("category", "seller")
-        }),
-        ("Status", {
-            "fields": ("is_available", "is_active")
-        }),
-        ("Stats", {
-            "fields": ("rating", "views")
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at")
-        }),
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "name",
+                    "slug",
+                    "description",
+                ),
+            },
+        ),
+        (
+            "Pricing",
+            {
+                "fields": (
+                    "price",
+                    "old_price",
+                    "discount_price",
+                ),
+            },
+        ),
+        (
+            "Relations",
+            {
+                "fields": (
+                    "category",
+                    "seller",
+                ),
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_available",
+                    "is_active",
+                ),
+            },
+        ),
+        (
+            "Statistics",
+            {
+                "fields": (
+                    "rating",
+                    "views",
+                ),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+            },
+        ),
     )
 
     save_on_top = True
+
     list_per_page = 25
+
+    date_hierarchy = "created_at"
 
 
 @admin.register(ProductImage)
@@ -91,6 +161,10 @@ class ProductImageAdmin(admin.ModelAdmin):
         "created_at",
     )
 
+    list_display_links = (
+        "product",
+    )
+
     list_filter = (
         "is_main",
         "created_at",
@@ -98,9 +172,28 @@ class ProductImageAdmin(admin.ModelAdmin):
 
     search_fields = (
         "product__name",
+        "product__slug",
     )
 
-    list_select_related = ("product",)
+    ordering = (
+        "-created_at",
+    )
+
+    list_select_related = (
+        "product",
+    )
+
+    readonly_fields = (
+        "created_at",
+    )
+
+    autocomplete_fields = (
+        "product",
+    )
+
+    list_per_page = 25
+
+    date_hierarchy = "created_at"
 
 
 @admin.register(Favourite)
@@ -111,15 +204,24 @@ class FavouriteAdmin(admin.ModelAdmin):
         "created_at",
     )
 
+    list_display_links = (
+        "user",
+    )
+
     list_filter = (
         "created_at",
         "user",
-        "product",
     )
 
     search_fields = (
         "user__username",
+        "user__email",
         "product__name",
+        "product__slug",
+    )
+
+    ordering = (
+        "-created_at",
     )
 
     list_select_related = (
@@ -127,5 +229,16 @@ class FavouriteAdmin(admin.ModelAdmin):
         "product",
     )
 
-    readonly_fields = ("created_at",)
+    readonly_fields = (
+        "created_at",
+    )
+
+    autocomplete_fields = (
+        "user",
+        "product",
+    )
+
+    list_per_page = 25
+
+    date_hierarchy = "created_at"
     

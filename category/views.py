@@ -1,49 +1,30 @@
-from rest_framework import viewsets
-from django.db.models import Prefetch
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from .models import Category, CategoryProperty, PropertyOption
-from .serializers import (
-    CategoryListSerializer,
-    CategoryDetailSerializer,
-    CategoryPropertySerializer,
-    PropertyOptionSerializer,
-)
+from .serializers import CategoryDetailSerializer, CategoryTreeSerializer
+from .services import CategoryService
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = (
-        Category.active
-        .select_related("parent")
-        .prefetch_related(
-            "children",
-            Prefetch(
-                "properties",
-                queryset=CategoryProperty.objects.prefetch_related("options")
-            ),
-        )
-    )
+class CategoryViewSet(ReadOnlyModelViewSet):
+    http_method_names = ["get"]
+
+    def get_queryset(self):
+        return CategoryService.queryset()
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return CategoryListSerializer
-        return CategoryDetailSerializer
+        if self.action == "retrieve":
+            return CategoryDetailSerializer
+        return CategoryTreeSerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(
+            self.get_queryset().filter(parent__isnull=True)
+        )
 
-class CategoryPropertyViewSet(viewsets.ModelViewSet):
-    queryset = (
-        CategoryProperty.objects
-        .select_related("category")
-        .prefetch_related("options")
-    )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-    serializer_class = CategoryPropertySerializer
-
-
-class PropertyOptionViewSet(viewsets.ModelViewSet):
-    queryset = (
-        PropertyOption.objects
-        .select_related("property", "property__category")
-    )
-
-    serializer_class = PropertyOptionSerializer
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     

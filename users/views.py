@@ -1,57 +1,80 @@
-from rest_framework import status, generics
-from rest_framework.response import Response
+from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import UserProfile
+from .models import User, UserProfile
 from .serializers import (
     RegisterSerializer,
+    SendOTPSerializer,
     VerifyOTPSerializer,
     UserSerializer,
     UserProfileSerializer,
 )
-from .services import OTPService
+from .services import UserService
+
+
+def api_response(success=True, message="", data=None, status_code=200):
+    return Response(
+        {
+            "success": success,
+            "message": message,
+            "data": data,
+        },
+        status=status_code,
+    )
+
+
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+    }
 
 
 class RegisterView(generics.GenericAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user = serializer.save()
-        OTPService.send_otp(user.phone_number)
+        result = UserService.send_otp(user.phone_number)
 
-        return Response(
-            {
-                "status": "success",
-                "code": "OTP_SENT",
-                "phone_number": user.phone_number,
-            },
-            status=status.HTTP_200_OK,
+        return api_response(
+            success=result["success"],
+            message=result["message"],
+            data=result.get("data"),
+            status_code=status.HTTP_201_CREATED,
         )
 
 
 class ResendOTPView(generics.GenericAPIView):
-    serializer_class = RegisterSerializer
+    serializer_class = SendOTPSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        phone = serializer.validated_data["phone_number"]
-        OTPService.send_otp(phone)
+        result = UserService.send_otp(
+            serializer.validated_data["phone_number"]
+        )
 
-        return Response(
-            {
-                "status": "success",
-                "code": "OTP_RESENT",
-                "phone_number": phone,
-            },
-            status=status.HTTP_200_OK,
+        status_code = (
+            status.HTTP_200_OK
+            if result["success"]
+            else status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+        return api_response(
+            success=result["success"],
+            message=result["message"],
+            data=result.get("data"),
+            status_code=status_code,
         )
 
 
@@ -59,26 +82,38 @@ class VerifyOTPView(generics.GenericAPIView):
     serializer_class = VerifyOTPSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data["user"]
-        otp = serializer.validated_data["otp"]
+        phone_number = serializer.validated_data["phone_number"]
+        otp_code = serializer.validated_data["otp_code"]
 
-        OTPService.verify_and_activate(user, otp)
+        result = UserService.verify_otp(
+            phone_number=phone_number,
+            code=otp_code,
+        )
 
-        refresh = RefreshToken.for_user(user)
+        if not result["success"]:
+            return api_response(
+                success=False,
+                message=result["message"],
+                data=result.get("data"),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
 
-        return Response(
-            {
-                "status": "success",
-                "code": "LOGIN_SUCCESS",
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
+        user = UserService._get_user(phone_number)
+
+        tokens = get_tokens_for_user(user)
+
+        return api_response(
+            success=True,
+            message="LOGIN_SUCCESS",
+            data={
+                **tokens,
                 "user": UserSerializer(user).data,
             },
-            status=status.HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
         )
 
 
@@ -95,5 +130,8 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        profile, _ = UserProfile.objects.get_or_create(
+            user=self.request.user
+        )
         return profile
+    

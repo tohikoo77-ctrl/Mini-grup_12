@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.html import format_html
 
 from .models import User, UserProfile, UserOTP
 
@@ -32,84 +33,53 @@ class UserAdmin(BaseUserAdmin):
 
     ordering = ("-created_at",)
 
+    list_per_page = 25
+    date_hierarchy = "created_at"
+
+    list_select_related = ("profile",)
+
     readonly_fields = (
         "created_at",
         "updated_at",
         "last_login",
     )
 
+    filter_horizontal = ("groups", "user_permissions")
+
     fieldsets = (
-        (
-            "Account Info",
-            {
-                "fields": (
-                    "phone_number",
-                    "email",
-                    "password",
-                )
-            },
-        ),
-        (
-            "Status",
-            {
-                "fields": (
-                    "user_type",
-                    "is_verified",
-                    "is_active",
-                )
-            },
-        ),
-        (
-            "Permissions",
-            {
-                "fields": (
-                    "is_staff",
-                    "is_superuser",
-                    "groups",
-                    "user_permissions",
-                )
-            },
-        ),
-        (
-            "Important Dates",
-            {
-                "fields": (
-                    "last_login",
-                    "created_at",
-                    "updated_at",
-                )
-            },
-        ),
+        ("Account Info", {
+            "fields": ("phone_number", "email", "password")
+        }),
+        ("Status", {
+            "fields": ("user_type", "is_verified", "is_active")
+        }),
+        ("Permissions", {
+            "fields": ("is_staff", "is_superuser", "groups", "user_permissions")
+        }),
+        ("Important Dates", {
+            "fields": ("last_login", "created_at", "updated_at")
+        }),
     )
 
     add_fieldsets = (
-        (
-            None,
-            {
-                "classes": ("wide",),
-                "fields": (
-                    "phone_number",
-                    "email",
-                    "password1",
-                    "password2",
-                    "user_type",
-                    "is_verified",
-                    "is_active",
-                    "is_staff",
-                    "is_superuser",
-                ),
-            },
-        ),
+        (None, {
+            "classes": ("wide",),
+            "fields": (
+                "phone_number",
+                "email",
+                "password1",
+                "password2",
+                "user_type",
+                "is_verified",
+                "is_active",
+                "is_staff",
+                "is_superuser",
+            ),
+        }),
     )
 
-    filter_horizontal = (
-        "groups",
-        "user_permissions",
-    )
-
-    list_per_page = 25
-    date_hierarchy = "created_at"
-    show_full_result_count = True
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("profile")
 
 
 @admin.register(UserProfile)
@@ -117,9 +87,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     list_display = (
         "user",
-        "first_name",
-        "last_name",
+        "full_name",
         "gender",
+        "avatar_preview",
         "created_at",
     )
 
@@ -136,11 +106,39 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     ordering = ("-created_at",)
 
-    readonly_fields = ("created_at",)
-
     list_per_page = 25
 
     list_select_related = ("user",)
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "avatar_preview",
+    )
+
+    fieldsets = (
+        ("User", {"fields": ("user",)}),
+        ("Profile Info", {
+            "fields": ("first_name", "last_name", "gender", "bio", "birth_date")
+        }),
+        ("Media", {"fields": ("avatar", "avatar_preview")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    def full_name(self, obj):
+        return obj.full_name or "-"
+
+    full_name.short_description = "Full Name"
+
+    def avatar_preview(self, obj):
+        if obj.avatar:
+            return format_html(
+                '<img src="{}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;" />',
+                obj.avatar.url,
+            )
+        return "—"
+
+    avatar_preview.short_description = "Avatar"
 
 
 @admin.register(UserOTP)
@@ -149,7 +147,7 @@ class UserOTPAdmin(admin.ModelAdmin):
     list_display = (
         "user",
         "code",
-        "is_used",
+        "status",
         "expires_at",
         "created_at",
     )
@@ -167,12 +165,30 @@ class UserOTPAdmin(admin.ModelAdmin):
 
     ordering = ("-created_at",)
 
+    list_per_page = 25
+
+    list_select_related = ("user",)
+
     readonly_fields = (
+        "user",
         "code",
-        "created_at",
         "expires_at",
+        "created_at",
+        "status",
     )
 
-    list_per_page = 25
-    date_hierarchy = "created_at"
-    list_select_related = ("user",)
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def status(self, obj):
+        if obj.is_used:
+            return "USED"
+        if obj.is_expired():
+            return "EXPIRED"
+        return "ACTIVE"
+
+    status.short_description = "Status"
+    
