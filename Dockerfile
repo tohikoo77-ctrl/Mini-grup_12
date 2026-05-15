@@ -1,18 +1,28 @@
-# Python muhitini o'rnatish
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
-# Docker ichidagi ishchi papka
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-# Kutubxonalarni o'rnatish uchun fayllarni nusxalash
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Loyiha fayllarini to'liq nusxalash
+FROM base AS dev
+
 COPY . .
 
-# Django ishga tushadigan port
 EXPOSE 8000
 
-# Loyihani ishga tushirish buyrug'i
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+FROM base AS prod
+
+COPY . .
+
+RUN python manage.py collectstatic --noinput
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-"]

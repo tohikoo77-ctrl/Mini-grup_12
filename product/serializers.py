@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, ProductImage
+from .models import Product, ProductImage, Favourite
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -35,3 +35,36 @@ class ProductSerializer(serializers.ModelSerializer):
             "created_at",
         )
         
+
+class FavouriteListSerializer(serializers.ModelSerializer):
+    """Foydalanuvchining sevimli mahsulotlari ro'yxati uchun"""
+    product = ProductSerializer(read_only=True)
+
+    class Meta:
+        model = Favourite
+        fields = ['id', 'product', 'created_at']
+
+
+class FavouriteCreateSerializer(serializers.ModelSerializer):
+    """Mahsulotni sevimlilarga qo'shish uchun"""
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.filter(is_active=True, is_available=True),
+        source='product'
+    )
+
+    class Meta:
+        model = Favourite
+        fields = ['product_id']
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        product = attrs['product']
+        
+        # Albatta unique ekanligini tekshiramiz
+        if Favourite.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("Bu mahsulot allaqachon sevimlilarga qo'shilgan.")
+        return attrs
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

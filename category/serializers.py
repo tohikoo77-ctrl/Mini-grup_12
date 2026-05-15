@@ -2,8 +2,69 @@ from rest_framework import serializers
 from .models import Category
 
 
-class CategorySerializer(serializers.ModelSerializer):
-    parent_name = serializers.CharField(source="parent.name", read_only=True)
+class PropertyOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyOption
+        fields = (
+            "id",
+            "value",
+        )
+
+
+class PropertyOptionCreateSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = PropertyOption
+        fields = (
+            "id",
+            "property",
+            "value",
+        )
+
+
+class CategoryPropertySerializer(serializers.ModelSerializer):
+    options = PropertyOptionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CategoryProperty
+        fields = (
+            "id",
+            "name",
+            "field_type",
+            "is_required",
+            "order",
+            "options",
+        )
+
+
+class CategoryPropertyCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CategoryProperty
+        fields = (
+            "id",
+            "category",      
+            "name",
+            "field_type",
+            "is_required",
+            "order",
+        )
+
+
+class CategoryListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = (
+            "id",
+            "name",
+            "slug",
+            "parent",
+            "is_active",
+            "order",
+        )
+
+
+class CategoryDetailSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
     properties = serializers.SerializerMethodField()
     full_path = serializers.SerializerMethodField()

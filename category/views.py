@@ -1,4 +1,29 @@
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework import viewsets
+from django.db.models import Prefetch
+
+from .models import Category, CategoryProperty, PropertyOption
+from .serializers import (
+    CategoryListSerializer,
+    CategoryDetailSerializer,
+    CategoryPropertySerializer,
+    CategoryPropertyCreateSerializer,
+    PropertyOptionSerializer,
+    PropertyOptionCreateSerializer,
+)
+
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = (
+        Category.active
+        .select_related("parent")
+        .prefetch_related(
+            "children",
+            Prefetch(
+                "properties",
+                queryset=CategoryProperty.objects.prefetch_related("options")
+            ),
+        )
+    )
 
 from .serializers import CategoryDetailSerializer, CategoryTreeSerializer
 from .services import CategoryService
@@ -7,8 +32,12 @@ from .services import CategoryService
 class CategoryViewSet(ReadOnlyModelViewSet):
     http_method_names = ["get"]
 
-    def get_queryset(self):
-        return CategoryService.queryset()
+    def get_serializer_class(self):
+        # Agar so'rov turi yaratish yoki o'zgartirish bo'lsa
+        if self.action in ["create", "update", "partial_update"]:
+            return CategoryPropertyCreateSerializer
+        # Ro'yxatni ko'rish (GET) uchun eski serializer qoladi
+        return CategoryPropertySerializer
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -25,6 +54,9 @@ class CategoryViewSet(ReadOnlyModelViewSet):
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    def get_serializer_class(self):
+
+        if self.action in ["create", "update", "partial_update"]:
+            return PropertyOptionCreateSerializer
+        return PropertyOptionSerializer
     
