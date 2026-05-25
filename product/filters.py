@@ -9,12 +9,20 @@ class ProductFilter:
     def filter(self):
         qs = self.queryset
 
+        qs = self._id(qs)
         qs = self._search(qs)
         qs = self._category(qs)
         qs = self._seller(qs)
         qs = self._price(qs)
         qs = self._availability(qs)
 
+        return qs
+
+    def _id(self, qs):
+        """Aniq mahsulot ID si bo'yicha filtrlash (?id=<uuid>)."""
+        product_id = self.params.get("id")
+        if product_id:
+            qs = qs.filter(pk=product_id)
         return qs
 
     def _search(self, qs):
