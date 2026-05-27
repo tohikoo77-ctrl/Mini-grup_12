@@ -26,7 +26,7 @@ SECRET_KEY = env("SECRET_KEY")
 
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
+ALLOWED_HOSTS = ["minigroup12.pythonanywhere.com", "localhost", "127.0.0.1", "*"]
 
 
 # APPS
