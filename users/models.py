@@ -35,7 +35,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_verified", True)
-        extra_fields.setdefault("is_active", True)  # Superuser aktiv bo'lishi kerak
+        extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("user_type", UserType.ADMIN)
 
         if extra_fields.get("is_staff") is not True:
@@ -45,6 +45,7 @@ class UserManager(BaseUserManager):
         return self.create_user(phone_number, password, **extra_fields)
 
 
+# 👤 USER MODEL (email -> gmail deb o'zgartirildi)
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     phone_number = models.CharField(
@@ -53,7 +54,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_index=True,
         validators=[RegexValidator(r"^\+\d{9,15}$")],
     )
-    email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
+    gmail = models.EmailField(unique=True, null=True, blank=True, db_index=True) # Maxsus gmail maydoni
     user_type = models.CharField(
         max_length=10, choices=UserType.choices, default=UserType.USER, db_index=True
     )
@@ -71,19 +72,19 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         indexes = [
             models.Index(fields=["phone_number"]),
-            models.Index(fields=["email"]),
+            models.Index(fields=["gmail"]),
         ]
 
     def __str__(self):
         return self.phone_number
 
 
+# 📑 USER PROFILE MODEL
 class UserProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="profile", db_index=True
     )
-    # Mana bu yerda default='' qo'shildi, migratsiya savol bermasligi uchun:
     first_name = models.CharField(max_length=100, blank=True, default="")
     last_name = models.CharField(max_length=100, blank=True, default="")
     avatar = models.ImageField(upload_to="avatars/%Y/%m", blank=True, null=True)
@@ -106,6 +107,7 @@ def otp_expiry():
     return timezone.now() + timedelta(minutes=5)
 
 
+# 🔑 USER OTP MODEL
 class UserOTP(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

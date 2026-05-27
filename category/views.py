@@ -1,13 +1,6 @@
-from __future__ import annotations
-
-from typing import Any, Type
-
-from django.db.models import Prefetch, QuerySet
+import uuid
+from django.db.models import Prefetch
 from rest_framework import viewsets
-from rest_framework.request import Request
-from rest_framework.response import Response
-
-from common.mixins import UUIDLookupMixin
 
 from .filters import CategoryFilter
 from .models import Category, CategoryProperty, PropertyOption
@@ -21,17 +14,29 @@ from .serializers import (
 )
 
 
-class CategoryViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
+def parse_uuid_list(uuid_string):
     """
-    Kategoriyalar: ro'yxat, qidiruv va ID bo'yicha bitta obyekt.
-
-    GET  /api/category/api/v1/categories/           — ro'yxat (?search=, ?id=)
-    GET  /api/category/api/v1/categories/<uuid>/    — bitta kategoriya
+    Строку из UUID, разделенных запятыми, превращает в список валидных UUID.
+    Игнорирует некорректные строки, защищая от ошибок базы данных.
     """
+    if not uuid_string:
+        return []
+        
+    valid_uuids = []
+    for item in uuid_string.split(','):
+        cleaned_item = item.strip()
+        try:
+            # Пытаемся преобразовать в объект UUID
+            valid_uuids.append(uuid.UUID(cleaned_item))
+        except ValueError:
+            # Если строка - не валидный UUID, просто пропускаем её
+            continue
+            
+    return valid_uuids
 
-    lookup_field = "pk"
 
-    def get_queryset(self) -> QuerySet[Category]:
+class CategoryViewSet(viewsets.ModelViewSet):
+    def get_queryset(self):
         qs = (
             Category.active.select_related("parent").prefetch_related(
                 "children",
@@ -41,16 +46,20 @@ class CategoryViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
                 ),
             )
         )
+        
+        # Получаем UUID из query_params (например, ?in_pk=uuid1,uuid2)
+        in_pk = self.request.query_params.get('in_pk')
+        uuid_list = parse_uuid_list(in_pk)
+        
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+
         return CategoryFilter(qs, self.request.query_params).filter()
 
-    def get_serializer_class(self) -> Type[Any]:
+    def get_serializer_class(self):
         if self.action == "list":
             return CategoryListSerializer
         return CategoryDetailSerializer
-
-    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """ID bo'yicha kategoriya; topilmasa 404."""
-        return super().retrieve(request, *args, **kwargs)
 
 
 class CategoryPropertyViewSet(viewsets.ModelViewSet):
@@ -59,6 +68,17 @@ class CategoryPropertyViewSet(viewsets.ModelViewSet):
             "options"
         )
     )
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        
+        in_pk = self.request.query_params.get('in_pk')
+        uuid_list = parse_uuid_list(in_pk)
+        
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+            
+        return qs
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -70,6 +90,17 @@ class PropertyOptionViewSet(viewsets.ModelViewSet):
     queryset = PropertyOption.objects.select_related(
         "property", "property__category"
     )
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        
+        in_pk = self.request.query_params.get('in_pk')
+        uuid_list = parse_uuid_list(in_pk)
+        
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+            
+        return qs
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:

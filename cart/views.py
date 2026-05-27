@@ -1,22 +1,14 @@
-from __future__ import annotations
-
-from typing import Any
-
 from django.db import transaction
-from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
 from rest_framework.response import Response
 
-from common.mixins import UUIDLookupMixin
 from order.models import Order, OrderItem
-from order.serializers import OrderCreateSerializer, OrderSerializer
+from order.serializers import CartCheckoutSerializer, OrderSerializer
 
-from .filters import CartFilter
 from .models import Cart, CartItem
 from .serializers import (
     AddCartItemSerializer,
@@ -26,40 +18,18 @@ from .serializers import (
 )
 
 
-class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
-    """
-    Savatlar: ro'yxat va ID bo'yicha bitta obyekt.
-
-    GET  /api/card/              — foydalanuvchi savatlari (?id=)
-    GET  /api/card/<uuid>/       — bitta savat
-    GET  /api/card/my/           — joriy foydalanuvchi savati
-    """
-
+class CartViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CartSerializer
-    lookup_field = "pk"
-    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
-    def get_queryset(self) -> QuerySet[Cart]:
-        qs = (
+    def get_queryset(self):
+        return (
             Cart.objects.filter(user=self.request.user)
             .select_related("user")
             .prefetch_related("items__product")
         )
-        return CartFilter(qs, self.request.query_params).filter()
 
-    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """Autentifikatsiya qilingan foydalanuvchining savatlari."""
-        queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """ID bo'yicha savat; topilmasa 404."""
-        cart = self.get_object()
-        return Response(self.serialize_cart(cart))
-
-    def get_cart(self, lock: bool = False) -> Cart:
+    def get_cart(self, lock=False):
         queryset = Cart.objects
         if lock:
             queryset = queryset.select_for_update()
@@ -67,16 +37,11 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         cart, _ = queryset.get_or_create(user=self.request.user)
         return cart
 
-    def serialize_cart(self, cart: Cart) -> dict:
+    def serialize_cart(self, cart):
         cart = self.get_queryset().get(pk=cart.pk)
         return self.get_serializer(cart).data
 
-    def cart_response(
-        self,
-        message: str,
-        cart: Cart,
-        response_status: int = status.HTTP_200_OK,
-    ) -> Response:
+    def cart_response(self, message, cart, response_status=status.HTTP_200_OK):
         return Response(
             {
                 "message": message,
@@ -85,7 +50,7 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
             status=response_status,
         )
 
-    def get_cart_item(self, cart: Cart, product_id: Any) -> CartItem:
+    def get_cart_item(self, cart, product_id):
         item = (
             CartItem.objects.select_related("product")
             .filter(cart=cart, product_id=product_id)
@@ -98,12 +63,12 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return item
 
     @action(detail=False, methods=["get"])
-    def my_cart(self, request: Request) -> Response:
+    def my_cart(self, request):
         cart = self.get_cart()
         return Response(self.serialize_cart(cart))
 
     @action(detail=False, methods=["post"])
-    def add_item(self, request: Request) -> Response:
+    def add_item(self, request):
         serializer = AddCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -128,7 +93,7 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.cart_response("added", cart, status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["delete"])
-    def remove_item(self, request: Request) -> Response:
+    def remove_item(self, request):
         serializer = RemoveCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -142,7 +107,7 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.cart_response("removed", cart)
 
     @action(detail=False, methods=["patch"])
-    def update_item(self, request: Request) -> Response:
+    def update_item(self, request):
         serializer = UpdateCartItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -158,7 +123,7 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.cart_response("updated", cart)
 
     @action(detail=False, methods=["delete"])
-    def clear(self, request: Request) -> Response:
+    def clear(self, request):
         with transaction.atomic():
             cart = self.get_cart(lock=True)
             cart.items.all().delete()
@@ -166,8 +131,8 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.cart_response("cleared", cart)
 
     @action(detail=False, methods=["post"])
-    def checkout(self, request: Request) -> Response:
-        serializer = OrderCreateSerializer(data=request.data)
+    def checkout(self, request):
+        serializer = CartCheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
@@ -181,7 +146,10 @@ class CartViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
 
             order = Order.objects.create(
                 user=request.user,
-                **serializer.validated_data,
+                phone=serializer.validated_data["phone"],
+                shipping_address_snapshot=serializer.validated_data[
+                    "shipping_address_snapshot"
+                ],
             )
 
             for item in cart_items:

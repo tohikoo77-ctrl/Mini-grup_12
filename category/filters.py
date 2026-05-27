@@ -1,24 +1,20 @@
-"""Category ro'yxati uchun qidiruv va ID filtrlari."""
+from django.db.models import Q
 
-from __future__ import annotations
-
-from django.db.models import Q, QuerySet
+from common.mixins import parse_uuid_pk
 
 
 class CategoryFilter:
-    """?search= va ?id= query parametrlarini qo'llaydi."""
-
-    def __init__(self, queryset: QuerySet, params: dict) -> None:
+    def __init__(self, queryset, params):
         self.queryset = queryset
         self.params = params
 
-    def filter(self) -> QuerySet:
+    def filter(self):
         qs = self.queryset
         qs = self._search(qs)
         qs = self._id(qs)
         return qs
 
-    def _search(self, qs: QuerySet) -> QuerySet:
+    def _search(self, qs):
         search = self.params.get("search")
         if search:
             qs = qs.filter(
@@ -26,8 +22,8 @@ class CategoryFilter:
             )
         return qs
 
-    def _id(self, qs: QuerySet) -> QuerySet:
-        category_id = self.params.get("id")
-        if category_id:
+    def _id(self, qs):
+        category_id = parse_uuid_pk(self.params.get("id"))
+        if category_id is not None:
             qs = qs.filter(pk=category_id)
         return qs

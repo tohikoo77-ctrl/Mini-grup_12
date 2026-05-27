@@ -1,5 +1,7 @@
 from django.db.models import Q
 
+from common.mixins import parse_uuid_pk
+
 
 class ProductFilter:
     def __init__(self, queryset, params):
@@ -19,9 +21,8 @@ class ProductFilter:
         return qs
 
     def _id(self, qs):
-        """Aniq mahsulot ID si bo'yicha filtrlash (?id=<uuid>)."""
-        product_id = self.params.get("id")
-        if product_id:
+        product_id = parse_uuid_pk(self.params.get("id"))
+        if product_id is not None:
             qs = qs.filter(pk=product_id)
         return qs
 
@@ -35,15 +36,15 @@ class ProductFilter:
         return qs
 
     def _category(self, qs):
-        category = self.params.get("category")
-        if category:
-            qs = qs.filter(category_id=category)
+        category_id = parse_uuid_pk(self.params.get("category"))
+        if category_id is not None:
+            qs = qs.filter(category_id=category_id)
         return qs
 
     def _seller(self, qs):
-        seller = self.params.get("seller")
-        if seller:
-            qs = qs.filter(seller_id=seller)
+        seller_id = parse_uuid_pk(self.params.get("seller"))
+        if seller_id is not None:
+            qs = qs.filter(seller_id=seller_id)
         return qs
 
     def _price(self, qs):
@@ -74,4 +75,3 @@ class ProductFilter:
             is_available = is_available.lower() in ["true", "1", "yes"]
 
         return qs.filter(is_available=is_available)
-    

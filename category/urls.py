@@ -7,13 +7,15 @@ from .views import (
     PropertyOptionViewSet,
 )
 
+# Router obyektini yaratamiz
 router = DefaultRouter()
+
+# ViewSet-larni mos URL yo'llari bilan ro'yxatdan o'tkazamiz
 router.register(r"categories", CategoryViewSet, basename="category")
 router.register(r"properties", CategoryPropertyViewSet, basename="category-property")
 router.register(r"options", PropertyOptionViewSet, basename="property-option")
 
+# Umumiy URL pattern-lar
 urlpatterns = [
-    # GET  /api/category/api/v1/categories/         — ro'yxat + qidiruv
-    # GET  /api/category/api/v1/categories/<uuid>/  — ID bo'yicha bitta kategoriya
     path("api/v1/", include(router.urls)),
 ]

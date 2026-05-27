@@ -6,10 +6,14 @@ from .models import User, UserProfile, UserOTP
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    # BaseUserAdmin formalaridagi email talablarini chetlab o'tamiz
+    form = BaseUserAdmin.form
+    add_form = BaseUserAdmin.add_form
 
+    # email -> gmail deb o'zgartirildi
     list_display = (
         "phone_number",
-        "email",
+        "gmail",
         "user_type",
         "is_verified",
         "is_active",
@@ -25,9 +29,10 @@ class UserAdmin(BaseUserAdmin):
         "created_at",
     )
 
+    # email -> gmail deb o'zgartirildi
     search_fields = (
         "phone_number",
-        "email",
+        "gmail",
     )
 
     ordering = ("-created_at",)
@@ -38,13 +43,14 @@ class UserAdmin(BaseUserAdmin):
         "last_login",
     )
 
+    # email -> gmail deb o'zgartirildi
     fieldsets = (
         (
             "Account Info",
             {
                 "fields": (
                     "phone_number",
-                    "email",
+                    "gmail",
                     "password",
                 )
             },
@@ -82,6 +88,7 @@ class UserAdmin(BaseUserAdmin):
         ),
     )
 
+    # email -> gmail deb o'zgartirildi
     add_fieldsets = (
         (
             None,
@@ -89,7 +96,7 @@ class UserAdmin(BaseUserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "phone_number",
-                    "email",
+                    "gmail",
                     "password1",
                     "password2",
                     "user_type",

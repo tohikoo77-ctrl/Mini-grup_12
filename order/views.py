@@ -1,17 +1,11 @@
-from __future__ import annotations
-
-from typing import Any, Type
-
+import uuid
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
 from rest_framework.response import Response
-
-from common.mixins import UUIDLookupMixin
 
 from .filters import OrderFilter
 from .models import Order, OrderItem
@@ -19,56 +13,69 @@ from .serializers import (
     AddItemSerializer,
     OrderCreateSerializer,
     OrderSerializer,
+    OrderUpdateSerializer,
     PromoApplySerializer,
 )
 
 
-class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
+def parse_uuid_list(uuid_string):
     """
-    Buyurtmalar: ro'yxat, qidiruv va ID bo'yicha bitta obyekt.
-
-    GET  /api/order/orders/              — ro'yxat (?search=, ?id=, ?status=)
-    GET  /api/order/orders/<uuid>/       — bitta buyurtma
+    Vergul bilan ajratilgan UUID qatorini toza UUID obyektlari ro'yxatiga o'tkazadi.
+    Noto'g'ri qiymatlarni o'tkazib yuboradi (baza xatolik bermasligi uchun).
     """
+    if not uuid_string:
+        return []
+        
+    valid_uuids = []
+    for item in uuid_string.split(','):
+        cleaned_item = item.strip()
+        try:
+            valid_uuids.append(uuid.UUID(cleaned_item))
+        except ValueError:
+            continue
+            
+    return valid_uuids
 
+
+class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    lookup_field = "pk"
 
-    def get_queryset(self) -> QuerySet[Order]:
+    def get_queryset(self):
+        # 1. Birlamchi optimallashtirilgan query yaratamiz
         qs = (
             Order.objects.filter(user=self.request.user)
             .select_related("user", "promocode")
             .prefetch_related("items__product")
         )
+        
+        # 2. URL query parametridan ?inpk=uuid1,uuid2 ni olamiz
+        inpk = self.request.query_params.get('inpk')
+        uuid_list = parse_uuid_list(inpk)
+        
+        # 3. Agar to'g'ri UUID-lar bo'lsa, queryset-ni filtrlaymiz
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+            
         return OrderFilter(qs, self.request.query_params).filter()
 
-    def get_serializer_class(self) -> Type[Any]:
-        if self.action in {"checkout", "create", "update", "partial_update"}:
+    def get_serializer_class(self):
+        if self.action == "checkout":
             return OrderCreateSerializer
+        if self.action in {"update", "partial_update"}:
+            return OrderUpdateSerializer
         return OrderSerializer
 
-    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """Foydalanuvchi buyurtmalarini qidiruv/filtr bilan qaytaradi."""
-        queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """ID bo'yicha buyurtma; topilmasa 404."""
-        order = self.get_object()
-        serializer = self.get_serializer(order)
-        return Response(serializer.data)
-
-    def serialize_order(self, order: Order) -> dict:
-        order = self.get_queryset().get(pk=order.pk)
+    def serialize_order(self, order):
+        # inpk parametri serialize_order ichidagi .get(pk=order.pk) ni buzmasligi uchun 
+        # get_queryset() o'rniga Order modelidan to'g'ridan-to'g'ri chaqiramiz
+        order = (
+            Order.objects.select_related("user", "promocode")
+            .prefetch_related("items__product")
+            .get(pk=order.pk)
+        )
         return OrderSerializer(order, context=self.get_serializer_context()).data
 
-    def order_response(
-        self,
-        message: str,
-        order: Order,
-        response_status: int = status.HTTP_200_OK,
-    ) -> Response:
+    def order_response(self, message, order, response_status=status.HTTP_200_OK):
         return Response(
             {
                 "message": message,
@@ -77,19 +84,19 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
             status=response_status,
         )
 
-    def ensure_modifiable(self, order: Order) -> None:
+    def ensure_modifiable(self, order):
         if not order.can_be_modified():
             raise ValidationError(
                 {"status": ["bu holatdagi orderni o'zgartirib bo'lmaydi."]}
             )
 
-    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def create(self, request, *args, **kwargs):
         return Response(
             {"detail": "orders/create/ endpointidan foydalaning."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    def update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         order = self.get_object()
         self.ensure_modifiable(order)
@@ -101,11 +108,11 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
 
         return self.order_response("Order updated", order)
 
-    def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def partial_update(self, request, *args, **kwargs):
         kwargs["partial"] = True
         return self.update(request, *args, **kwargs)
 
-    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def destroy(self, request, *args, **kwargs):
         order = self.get_object()
 
         if not order.can_be_cancelled():
@@ -117,12 +124,12 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"])
-    def checkout(self, request: Request) -> Response:
+    def checkout(self, request):
         serializer = OrderCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         order = self.get_queryset().select_for_update().filter(
-            pk=serializer.validated_data["order_id"]
+            pk=serializer.validated_data["checkout_id"]
         ).first()
 
         if order is None:
@@ -132,7 +139,7 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.order_response("Order created", order, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
-    def add_item(self, request: Request, pk: str | None = None) -> Response:
+    def add_item(self, request, pk=None):
         serializer = AddItemSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -174,7 +181,7 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.order_response("Item added", order, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
-    def apply_promocode(self, request: Request, pk: str | None = None) -> Response:
+    def apply_promocode(self, request, pk=None):
         serializer = PromoApplySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         promo = serializer.context["promo"]
@@ -190,16 +197,12 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.order_response("Promo applied", order)
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request: Request, pk: str | None = None) -> Response:
+    def cancel(self, request, pk=None):
         order = self.get_object()
 
         if not order.can_be_cancelled():
             raise ValidationError(
-                {
-                    "status": [
-                        "shipped, delivered yoki cancelled order bekor qilinmaydi."
-                    ]
-                }
+                {"status": ["shipped, delivered yoki cancelled order bekor qilinmaydi."]}
             )
 
         order.status = Order.Status.CANCELLED
@@ -208,8 +211,8 @@ class OrderViewSet(UUIDLookupMixin, viewsets.ModelViewSet):
         return self.order_response("Order cancelled", order)
 
     @action(detail=False, methods=["get"])
-    def my_orders(self, request: Request) -> Response:
-        orders = self.filter_queryset(self.get_queryset())
+    def my_orders(self, request):
+        orders = self.get_queryset()
         serializer = OrderSerializer(
             orders,
             many=True,

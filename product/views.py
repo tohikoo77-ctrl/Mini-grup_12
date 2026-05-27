@@ -1,51 +1,57 @@
-from __future__ import annotations
-
-from typing import Any
-
-from django.db.models import F, QuerySet
+import uuid
+from django.db.models import F
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
 from rest_framework.response import Response
 
-from common.mixins import UUIDLookupMixin
-
 from .filters import ProductFilter
-from .models import Favourite, Product
-from .serializers import (
-    FavouriteCreateSerializer,
-    FavouriteListSerializer,
-    ProductSerializer,
-)
+from .models import Product, Favourite
+from .serializers import ProductSerializer, FavouriteListSerializer, FavouriteCreateSerializer
+
+
+def parse_uuid_list(uuid_string):
+    """
+    Vergul bilan ajratilgan UUID qatorini toza UUID obyektlari ro'yxatiga o'tkazadi.
+    Noto'g'ri qiymatlarni o'tkazib yuboradi (baza xatolik bermasligi uchun).
+    """
+    if not uuid_string:
+        return []
+        
+    valid_uuids = []
+    for item in uuid_string.split(','):
+        cleaned_item = item.strip()
+        try:
+            valid_uuids.append(uuid.UUID(cleaned_item))
+        except ValueError:
+            continue
+            
+    return valid_uuids
 
 
 class ProductViewSet(
-    UUIDLookupMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    Mahsulotlar ro'yxati, qidiruv va ID bo'yicha bitta obyekt.
-
-    GET  /api/product/api/v1/products/           — ro'yxat (?search=, ?id=, ...)
-    GET  /api/product/api/v1/products/<uuid>/    — bitta mahsulot
-    """
-
     serializer_class = ProductSerializer
-    lookup_field = "pk"
 
-    def get_queryset(self) -> QuerySet[Product]:
+    def get_queryset(self):
         qs = Product.objects.select_related(
             "category",
             "seller",
         ).prefetch_related("images")
 
+        # ?inpk=uuid1,uuid2 parametrini tekshiramiz
+        inpk = self.request.query_params.get('inpk')
+        uuid_list = parse_uuid_list(inpk)
+        
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+
         return ProductFilter(qs, self.request.query_params).filter()
 
-    def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """ID bo'yicha mahsulot; topilmasa 404."""
+    def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
 
         Product.objects.filter(pk=instance.pk).update(views=F("views") + 1)
@@ -70,9 +76,18 @@ class FavouriteViewSet(
         return FavouriteListSerializer
 
     def get_queryset(self):
-        return Favourite.objects.filter(user=self.request.user).select_related(
+        qs = Favourite.objects.filter(user=self.request.user).select_related(
             "product", "product__category", "product__seller"
         ).prefetch_related("product__images")
+
+        # ?inpk=uuid1,uuid2 parametrini tekshiramiz (Favourite obyektining o'z IDsi bo'yicha)
+        inpk = self.request.query_params.get('inpk')
+        uuid_list = parse_uuid_list(inpk)
+        
+        if uuid_list:
+            qs = qs.filter(pk__in=uuid_list)
+            
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
