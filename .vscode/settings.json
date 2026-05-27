@@ -1,0 +1,4 @@
+{
+    "unfoldai.terminal.completionChips.enabled": true,
+    "unfoldai.terminal.historyPersistence.enabled": true
+}

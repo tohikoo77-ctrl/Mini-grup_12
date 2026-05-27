@@ -1,5 +1,7 @@
 from django.db.models import Q
 
+from common.mixins import parse_uuid_pk
+
 
 class ProductFilter:
     def __init__(self, queryset, params):
@@ -9,12 +11,19 @@ class ProductFilter:
     def filter(self):
         qs = self.queryset
 
+        qs = self._id(qs)
         qs = self._search(qs)
         qs = self._category(qs)
         qs = self._seller(qs)
         qs = self._price(qs)
         qs = self._availability(qs)
 
+        return qs
+
+    def _id(self, qs):
+        product_id = parse_uuid_pk(self.params.get("id"))
+        if product_id is not None:
+            qs = qs.filter(pk=product_id)
         return qs
 
     def _search(self, qs):
@@ -27,15 +36,15 @@ class ProductFilter:
         return qs
 
     def _category(self, qs):
-        category = self.params.get("category")
-        if category:
-            qs = qs.filter(category_id=category)
+        category_id = parse_uuid_pk(self.params.get("category"))
+        if category_id is not None:
+            qs = qs.filter(category_id=category_id)
         return qs
 
     def _seller(self, qs):
-        seller = self.params.get("seller")
-        if seller:
-            qs = qs.filter(seller_id=seller)
+        seller_id = parse_uuid_pk(self.params.get("seller"))
+        if seller_id is not None:
+            qs = qs.filter(seller_id=seller_id)
         return qs
 
     def _price(self, qs):
@@ -66,4 +75,3 @@ class ProductFilter:
             is_available = is_available.lower() in ["true", "1", "yes"]
 
         return qs.filter(is_available=is_available)
-    

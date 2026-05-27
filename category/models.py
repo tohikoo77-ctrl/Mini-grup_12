@@ -1,4 +1,5 @@
 import uuid
+
 from django.db import models
 from django.utils.text import slugify
 
@@ -32,7 +33,6 @@ class ActiveManager(models.Manager):
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
@@ -89,7 +89,6 @@ class Category(models.Model):
 
 class CategoryProperty(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -120,7 +119,6 @@ class CategoryProperty(models.Model):
 
 class PropertyOption(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     property = models.ForeignKey(
         CategoryProperty,
         on_delete=models.CASCADE,

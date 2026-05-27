@@ -1,4 +1,5 @@
 import uuid
+
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
@@ -8,7 +9,6 @@ from category.models import Category
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
@@ -71,7 +71,6 @@ class Product(models.Model):
 
 class ProductImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="products/%Y/%m/")
     is_main = models.BooleanField(default=False)
@@ -97,7 +96,6 @@ class ProductImage(models.Model):
 
 class Favourite(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favourites")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favourited_by")
 

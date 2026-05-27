@@ -57,6 +57,13 @@ CORS_ALLOW_ALL_ORIGINS=False
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 CSRF_TRUSTED_ORIGINS=http://localhost:3000
 DATABASE_URL=
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=noreply@example.com
 ```
 
 Production uchun muhim qiymatlar:
@@ -163,12 +170,16 @@ Auth va user:
 | Method | Endpoint | Tavsif |
 | --- | --- | --- |
 | POST | `/api/user/api/v1/auth/register/` | Ro'yxatdan o'tish va OTP yuborish |
+| POST | `/api/user/api/v1/auth/send-otp/` | Telefon raqamga OTP yuborish |
 | POST | `/api/user/api/v1/auth/resend-otp/` | OTP qayta yuborish |
 | POST | `/api/user/api/v1/auth/verify/` | OTP tasdiqlash va token olish |
 | POST | `/api/user/api/v1/auth/token/` | JWT token olish |
 | POST | `/api/user/api/v1/auth/token/refresh/` | Refresh token |
+| GET | `/api/user/api/v1/user/` | Barcha userlar ro'yxati |
+| GET | `/api/user/api/v1/user/{id}/` | User detail |
 | GET | `/api/user/api/v1/user/me/` | Joriy user ma'lumoti |
-| GET/PATCH/DELETE | `/api/user/api/v1/user/profile/` | User profile |
+| GET/POST | `/api/user/api/v1/user/profile/` | Barcha profilelar ro'yxati yoki register |
+| GET/PATCH/DELETE | `/api/user/api/v1/user/profile/{id}/` | User profile detail |
 
 Product:
 
@@ -195,6 +206,7 @@ Cart:
 | POST | `/api/card/add/` | Savatga mahsulot qo'shish |
 | PATCH | `/api/card/update/` | Savatdagi miqdorni o'zgartirish |
 | DELETE | `/api/card/remove/` | Savatdan mahsulot o'chirish |
+| DELETE | `/api/card/clear/` | Savatni tozalash |
 
 Order:
 
@@ -207,6 +219,8 @@ Order:
 | POST | `/api/order/orders/{uuid}/apply-promo/` | Promocode qo'llash |
 | POST | `/api/order/orders/{uuid}/cancel/` | Buyurtmani bekor qilish |
 | GET | `/api/order/orders/my-orders/` | Mening buyurtmalarim |
+
+Promocode `discount_percent` qiymati 1 dan 100 gacha bo'lishi kerak.
 
 Common va news:
 

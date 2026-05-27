@@ -1,14 +1,9 @@
 from django.urls import path
+
 from .views import OrderViewSet
 
-order_list = OrderViewSet.as_view(
-    {
-        "get": "list",
-    }
-)
-
+order_list = OrderViewSet.as_view({"get": "list"})
 order_create = OrderViewSet.as_view({"post": "checkout"})
-
 order_detail = OrderViewSet.as_view(
     {
         "get": "retrieve",
@@ -17,15 +12,10 @@ order_detail = OrderViewSet.as_view(
         "delete": "destroy",
     }
 )
-
 order_add_item = OrderViewSet.as_view({"post": "add_item"})
-
 order_apply_promo = OrderViewSet.as_view({"post": "apply_promocode"})
-
 order_cancel = OrderViewSet.as_view({"post": "cancel"})
-
 order_my_orders = OrderViewSet.as_view({"get": "my_orders"})
-
 
 urlpatterns = [
     path("orders/", order_list, name="order-list"),
