@@ -49,23 +49,6 @@ class UserAdmin(BaseUserAdmin):
         "last_login",
     )
 
-<<<<<<< HEAD
-    filter_horizontal = ("groups", "user_permissions")
-
-    fieldsets = (
-        ("Account Info", {
-            "fields": ("phone_number", "email", "password")
-        }),
-        ("Status", {
-            "fields": ("user_type", "is_verified", "is_active")
-        }),
-        ("Permissions", {
-            "fields": ("is_staff", "is_superuser", "groups", "user_permissions")
-        }),
-        ("Important Dates", {
-            "fields": ("last_login", "created_at", "updated_at")
-        }),
-=======
     # email -> gmail deb o'zgartirildi
     fieldsets = (
         (
@@ -109,27 +92,10 @@ class UserAdmin(BaseUserAdmin):
                 )
             },
         ),
->>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     )
 
     # email -> gmail deb o'zgartirildi
     add_fieldsets = (
-<<<<<<< HEAD
-        (None, {
-            "classes": ("wide",),
-            "fields": (
-                "phone_number",
-                "email",
-                "password1",
-                "password2",
-                "user_type",
-                "is_verified",
-                "is_active",
-                "is_staff",
-                "is_superuser",
-            ),
-        }),
-=======
         (
             None,
             {
@@ -147,7 +113,6 @@ class UserAdmin(BaseUserAdmin):
                 ),
             },
         ),
->>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     )
 
     def get_queryset(self, request):
