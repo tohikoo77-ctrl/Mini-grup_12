@@ -1,4 +1,5 @@
 import uuid
+
 from django.db import models
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
@@ -37,7 +38,10 @@ def generate_unique_slug(instance, base_slug):
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True, db_index=True)
 
@@ -107,7 +111,6 @@ class Category(models.Model):
 
 class CategoryProperty(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -135,7 +138,6 @@ class CategoryProperty(models.Model):
 
 class PropertyOption(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     property = models.ForeignKey(
         CategoryProperty,
         on_delete=models.CASCADE,

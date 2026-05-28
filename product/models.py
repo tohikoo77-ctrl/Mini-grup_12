@@ -1,6 +1,12 @@
 import uuid
+<<<<<<< HEAD
 from decimal import Decimal
 
+=======
+
+from django.db import models
+from django.utils.text import slugify
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
@@ -22,8 +28,12 @@ class ActiveProductManager(models.Manager):
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+<<<<<<< HEAD
 
     name = models.CharField(max_length=200, db_index=True)
+=======
+    name = models.CharField(max_length=200)
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     slug = models.SlugField(max_length=255, unique=True, blank=True)
 
     description = models.TextField(blank=True, null=True)
@@ -148,6 +158,7 @@ class Product(models.Model):
         self.is_active = True
         self.save(update_fields=["is_deleted", "is_active"])
 
+<<<<<<< HEAD
     def increase_views(self):
         Product.all_objects.filter(id=self.id).update(
             views=F("views") + 1
@@ -155,4 +166,50 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} | {self.price}"
+=======
+class ProductImage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="products/%Y/%m/")
+    is_main = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-is_main", "-created_at"]
+        indexes = [models.Index(fields=["product"])]
+
+    def save(self, *args, **kwargs):
+        if self.is_main:
+            ProductImage.objects.filter(
+                product=self.product,
+                is_main=True
+            ).exclude(id=self.id).update(is_main=False)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.product.name} image"
+
+
+class Favourite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favourites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favourited_by")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="unique_favourite")
+        ]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["product"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} -> {self.product}"
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     

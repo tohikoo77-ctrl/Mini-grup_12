@@ -59,6 +59,7 @@ class UserManager(BaseUserManager):
         )
 
 
+# 👤 USER MODEL (email -> gmail deb o'zgartirildi)
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(
         primary_key=True,
@@ -76,12 +77,16 @@ class User(AbstractBaseUser, PermissionsMixin):
             )
         ],
     )
+<<<<<<< HEAD
 
     email = models.EmailField(
         blank=True,
         null=True
     )
 
+=======
+    gmail = models.EmailField(unique=True, null=True, blank=True, db_index=True) # Maxsus gmail maydoni
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     user_type = models.CharField(
         max_length=10,
         choices=UserType.choices,
@@ -104,16 +109,21 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["phone_number"]),
+<<<<<<< HEAD
             models.Index(fields=["user_type"]),
             models.Index(fields=["is_active"]),
             models.Index(fields=["is_verified"]),
             models.Index(fields=["created_at"]),
+=======
+            models.Index(fields=["gmail"]),
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
         ]
 
     def __str__(self):
         return self.phone_number
 
 
+# 📑 USER PROFILE MODEL
 class UserProfile(models.Model):
     id = models.UUIDField(
         primary_key=True,
@@ -126,6 +136,7 @@ class UserProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="profile"
     )
+<<<<<<< HEAD
 
     first_name = models.CharField(
         max_length=100,
@@ -145,6 +156,11 @@ class UserProfile(models.Model):
         null=True
     )
 
+=======
+    first_name = models.CharField(max_length=100, blank=True, default="")
+    last_name = models.CharField(max_length=100, blank=True, default="")
+    avatar = models.ImageField(upload_to="avatars/%Y/%m", blank=True, null=True)
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     gender = models.CharField(
         max_length=10,
         choices=GenderType.choices,
@@ -184,6 +200,7 @@ def otp_expiry():
     return timezone.now() + timedelta(minutes=5)
 
 
+# 🔑 USER OTP MODEL
 class UserOTP(models.Model):
     id = models.UUIDField(
         primary_key=True,

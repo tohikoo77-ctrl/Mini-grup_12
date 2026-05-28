@@ -7,10 +7,14 @@ from .models import User, UserProfile, UserOTP
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    # BaseUserAdmin formalaridagi email talablarini chetlab o'tamiz
+    form = BaseUserAdmin.form
+    add_form = BaseUserAdmin.add_form
 
+    # email -> gmail deb o'zgartirildi
     list_display = (
         "phone_number",
-        "email",
+        "gmail",
         "user_type",
         "is_verified",
         "is_active",
@@ -26,9 +30,10 @@ class UserAdmin(BaseUserAdmin):
         "created_at",
     )
 
+    # email -> gmail deb o'zgartirildi
     search_fields = (
         "phone_number",
-        "email",
+        "gmail",
     )
 
     ordering = ("-created_at",)
@@ -44,6 +49,7 @@ class UserAdmin(BaseUserAdmin):
         "last_login",
     )
 
+<<<<<<< HEAD
     filter_horizontal = ("groups", "user_permissions")
 
     fieldsets = (
@@ -59,9 +65,56 @@ class UserAdmin(BaseUserAdmin):
         ("Important Dates", {
             "fields": ("last_login", "created_at", "updated_at")
         }),
+=======
+    # email -> gmail deb o'zgartirildi
+    fieldsets = (
+        (
+            "Account Info",
+            {
+                "fields": (
+                    "phone_number",
+                    "gmail",
+                    "password",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "user_type",
+                    "is_verified",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        (
+            "Important Dates",
+            {
+                "fields": (
+                    "last_login",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     )
 
+    # email -> gmail deb o'zgartirildi
     add_fieldsets = (
+<<<<<<< HEAD
         (None, {
             "classes": ("wide",),
             "fields": (
@@ -76,6 +129,25 @@ class UserAdmin(BaseUserAdmin):
                 "is_superuser",
             ),
         }),
+=======
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "phone_number",
+                    "gmail",
+                    "password1",
+                    "password2",
+                    "user_type",
+                    "is_verified",
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                ),
+            },
+        ),
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     )
 
     def get_queryset(self, request):

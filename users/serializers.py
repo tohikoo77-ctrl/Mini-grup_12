@@ -1,12 +1,20 @@
 import re
 
 from django.contrib.auth import get_user_model
+<<<<<<< HEAD
 from django.db import IntegrityError
 from rest_framework import serializers
 
 from common.models import UserAddress
 from .models import UserProfile
 from .services import UserService
+=======
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+from rest_framework import serializers
+
+from .models import UserOTP, UserProfile
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
 User = get_user_model()
 
@@ -38,9 +46,18 @@ def clean_otp(value):
     return value
 
 
+class PhoneNumberSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(validators=[clean_phone])
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    user_id = serializers.UUIDField(source="user.id", read_only=True)
+    phone_number = serializers.CharField(source="user.phone_number", read_only=True)
+    gmail = serializers.EmailField(source="user.gmail", read_only=True)
+
     class Meta:
         model = UserProfile
+<<<<<<< HEAD
         fields = (
             "id",
             "first_name",
@@ -54,47 +71,110 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAddress
+=======
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
         fields = (
             "id",
-            "country",
-            "region",
-            "city",
-            "street",
-            "house",
-            "postal_code",
-            "is_default",
+            "user_id",
+            "phone_number",
+            "gmail",
+            "first_name",
+            "last_name",
+            "gender",
+            "birth_date",
+            "bio",
         )
 
 
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(read_only=True)
-    addresses = UserAddressSerializer(many=True, read_only=True)
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    gender = serializers.SerializerMethodField()
+    birth_date = serializers.SerializerMethodField()
+    bio = serializers.SerializerMethodField()
+
+    def _get_profile(self, obj):
+        try:
+            return obj.profile
+        except UserProfile.DoesNotExist:
+            return None
+
+    def get_first_name(self, obj):
+        profile = self._get_profile(obj)
+        return profile.first_name if profile else ""
+
+    def get_last_name(self, obj):
+        profile = self._get_profile(obj)
+        return profile.last_name if profile else ""
+
+    def get_gender(self, obj):
+        profile = self._get_profile(obj)
+        return profile.gender if profile else None
+
+    def get_birth_date(self, obj):
+        profile = self._get_profile(obj)
+        return profile.birth_date if profile else None
+
+    def get_bio(self, obj):
+        profile = self._get_profile(obj)
+        return profile.bio if profile else ""
 
     class Meta:
         model = User
         fields = (
             "id",
+            "first_name",
+            "last_name",
             "phone_number",
-            "email",
+            "gmail",
+            "gender",
+            "birth_date",
+            "bio",
             "user_type",
+            "is_active",
             "is_verified",
-            "profile",
-            "addresses",
         )
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(validators=[clean_phone])
-    email = serializers.EmailField(required=False, allow_blank=True)
+    gmail = serializers.EmailField(required=True, allow_blank=False, allow_null=False)
+
+    first_name = serializers.CharField(max_length=100, required=True)
+    last_name = serializers.CharField(max_length=100, required=True)
+    gender = serializers.ChoiceField(
+        choices=[("MALE", "Male"), ("FEMALE", "Female")],
+        required=False,
+        allow_null=True,
+    )
+    birth_date = serializers.DateField(required=False, allow_null=True)
+    bio = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ("phone_number", "email")
+        fields = (
+            "phone_number",
+            "gmail",
+            "first_name",
+            "last_name",
+            "gender",
+            "birth_date",
+            "bio",
+        )
 
-    def validate_email(self, value):
-        return (value or "").strip().lower()
+    def validate_gmail(self, value):
+        value = (value or "").strip().lower()
+        if User.objects.filter(gmail__iexact=value).exists():
+            raise serializers.ValidationError("bu gmail mavjut.")
+        return value
+
+    def validate_phone_number(self, value):
+        if User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("bu raqam mavjut.")
+        return value
 
     def create(self, validated_data):
+<<<<<<< HEAD
         phone_number = validated_data["phone_number"]
         email = validated_data.get("email", "")
 
@@ -123,24 +203,83 @@ class RegisterSerializer(serializers.ModelSerializer):
                     "code": "EMAIL_ALREADY_EXISTS",
                     "message": "Email already taken",
                 })
+=======
+        phone = validated_data["phone_number"]
+        gmail = validated_data.get("gmail", None)
+
+        profile_data = {
+            "first_name": validated_data.pop("first_name", ""),
+            "last_name": validated_data.pop("last_name", ""),
+            "gender": validated_data.pop("gender", None),
+            "birth_date": validated_data.pop("birth_date", None),
+            "bio": validated_data.pop("bio", ""),
+        }
+
+        try:
+            with transaction.atomic():
+                user, created = User.objects.get_or_create(
+                    phone_number=phone,
+                    defaults={
+                        "gmail": gmail if gmail else None,
+                        "is_active": False,
+                        "is_verified": False,
+                    },
+                )
+
+                if not created and gmail:
+                    user.gmail = gmail
+                    user.save(update_fields=["gmail"])
+
+                UserProfile.objects.update_or_create(user=user, defaults=profile_data)
+        except IntegrityError as exc:
+            message = str(exc).lower()
+            if "gmail" in message:
+                raise serializers.ValidationError({"gmail": ["bu gmail mavjut."]})
+            if "phone_number" in message:
+                raise serializers.ValidationError(
+                    {"phone_number": ["bu raqam mavjut."]}
+                )
+            raise
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
         return user
 
 
-class SendOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(validators=[clean_phone])
-
-
 class VerifyOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField(validators=[clean_phone])
-    otp_code = serializers.CharField(validators=[clean_otp])
+    otp_code = serializers.CharField(
+        required=False,
+        allow_blank=False,
+        validators=[clean_otp],
+    )
+    otp = serializers.CharField(
+        required=False,
+        allow_blank=False,
+        write_only=True,
+        validators=[clean_otp],
+    )
 
     def validate(self, attrs):
+<<<<<<< HEAD
         phone_number = attrs["phone_number"]
 
         user = UserService.get_user(phone_number)
+=======
+        phone = attrs["phone_number"]
+        otp_code = attrs.get("otp_code")
+        otp = attrs.get("otp")
+
+        if not otp_code and not otp:
+            raise serializers.ValidationError({"code": "OTP_REQUIRED"})
+
+        if otp_code and otp and otp_code != otp:
+            raise serializers.ValidationError({"code": "OTP_MISMATCH"})
+
+        code = otp_code or otp
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
         if not user:
+<<<<<<< HEAD
             raise serializers.ValidationError({
                 "code": "USER_NOT_FOUND",
                 "message": "User does not exist",
@@ -166,3 +305,25 @@ class VerifyOTPSerializer(serializers.Serializer):
 
         return user
     
+=======
+            raise serializers.ValidationError({"code": "USER_NOT_FOUND"})
+
+        otp_instance = (
+            UserOTP.objects.filter(
+                user=user,
+                code=code,
+                is_used=False,
+                expires_at__gt=timezone.now(),
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if not otp_instance or otp_instance.is_expired():
+            raise serializers.ValidationError({"code": "OTP_INVALID_OR_EXPIRED"})
+
+        attrs["user"] = user
+        attrs["otp"] = otp_instance
+        attrs["otp_code"] = code
+        return attrs
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c

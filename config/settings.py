@@ -26,7 +26,7 @@ SECRET_KEY = env("SECRET_KEY")
 
 DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
+ALLOWED_HOSTS = ["minigroup12.pythonanywhere.com", "localhost", "127.0.0.1", "*"]
 
 
 # APPS
@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "rest_framework_simplejwt",
+    "drf_spectacular",
     # project_apps
     "users",
     "category",
@@ -210,13 +211,31 @@ CACHES = {
 }
 
 
+# EMAIL
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="").strip()
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="").strip()
+DEFAULT_FROM_EMAIL = (
+    env("DEFAULT_FROM_EMAIL", default="").strip()
+    or EMAIL_HOST_USER
+    or "noreply@example.com"
+)
+
+
 # CELERY
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
+CELERY_RESULT_BACKEND = env("CELERY_BROKER_URL", default=CELERY_BROKER_URL)
 
 
 # DRF
 REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
