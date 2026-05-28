@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, CategoryProperty, PropertyOption
+from .models import Category
 
 
 class PropertyOptionSerializer(serializers.ModelSerializer):
@@ -66,7 +66,7 @@ class CategoryListSerializer(serializers.ModelSerializer):
 
 class CategoryDetailSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
-    properties = CategoryPropertySerializer(many=True, read_only=True)
+    properties = serializers.SerializerMethodField()
     full_path = serializers.SerializerMethodField()
 
     class Meta:
@@ -76,20 +76,17 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "parent",
+            "parent_name",
             "image",
             "icon",
             "is_active",
-            "is_deleted",
             "order",
-            "full_path",
             "children",
             "properties",
+            "full_path",
         )
 
     def get_children(self, obj):
-        # SAFE: works with prefetch or normal queryset
-        children = getattr(obj, "children_all", None) or obj.children.all()
-
         return [
             {
                 "id": c.id,
@@ -98,16 +95,30 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
                 "is_active": c.is_active,
                 "order": c.order,
             }
-            for c in children
+            for c in (getattr(obj, "_children_cache", []) or [])
         ]
 
+    def get_properties(self, obj):
+        result = []
+
+        for p in (getattr(obj, "_properties_cache", []) or []):
+            result.append({
+                "id": p.id,
+                "name": p.name,
+                "field_type": p.field_type,
+                "is_required": p.is_required,
+                "order": p.order,
+                "options": [
+                    {
+                        "id": o.id,
+                        "value": o.value,
+                    }
+                    for o in (getattr(p, "_options_cache", []) or p.options.all())
+                ],
+            })
+
+        return result
+
     def get_full_path(self, obj):
-        names = []
-        current = obj
-
-        while current:
-            names.append(current.name)
-            current = current.parent
-
-        return " > ".join(reversed(names))
+        return obj.get_full_path()
     

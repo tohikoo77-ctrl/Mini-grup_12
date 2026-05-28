@@ -1,31 +1,53 @@
 import secrets
 from datetime import timedelta
 
+<<<<<<< HEAD
+=======
 from django.conf import settings
 from django.core.mail import send_mail
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 from django.db import transaction
 from django.utils import timezone
 
 from .models import User, UserOTP
 
 
-class OTPService:
+class UserService:
     OTP_LENGTH = 6
     OTP_EXPIRE_MINUTES = 2
     RESEND_COOLDOWN_SECONDS = 30
+<<<<<<< HEAD
+    MAX_ATTEMPTS = 5
+=======
     EMAIL_PLACEHOLDERS = {
         "",
         "yourgmail@gmail.com",
         "your_google_app_password",
         "google_app_password",
     }
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
+  
     @staticmethod
-    def generate_code():
-        return "".join(str(secrets.randbelow(10)) for _ in range(OTPService.OTP_LENGTH))
+    def normalize_phone(phone_number: str) -> str:
+        return "".join(phone_number.split()).strip()
 
-    @staticmethod
-    def _get_or_create_user(phone_number):
+    @classmethod
+    def generate_otp(cls) -> str:
+        return "".join(
+            str(secrets.randbelow(10))
+            for _ in range(cls.OTP_LENGTH)
+        )
+
+    @classmethod
+    def _get_user(cls, phone_number: str):
+        phone_number = cls.normalize_phone(phone_number)
+        return User.objects.filter(phone_number=phone_number).first()
+
+    @classmethod
+    def get_or_create_user(cls, phone_number: str):
+        phone_number = cls.normalize_phone(phone_number)
+
         user, _ = User.objects.get_or_create(
             phone_number=phone_number,
             defaults={
@@ -81,57 +103,148 @@ class OTPService:
         }
 
     @classmethod
-    def send_otp(cls, phone_number):
-        user = cls._get_or_create_user(phone_number)
+    def last_otp(cls, user):
+        return (
+            user.otps
+            .only("created_at")
+            .order_by("-created_at")
+            .first()
+        )
+
+  
+    @classmethod
+    def send_otp(cls, phone_number: str):
+        user = cls.get_or_create_user(phone_number)
         now = timezone.now()
 
-        last_otp = user.otps.order_by("-created_at").only("created_at").first()
+        last = cls.last_otp(user)
 
-        if last_otp:
-            seconds_passed = (now - last_otp.created_at).total_seconds()
-            remaining = cls.RESEND_COOLDOWN_SECONDS - int(seconds_passed)
+        
+        if last:
+            diff = (now - last.created_at).total_seconds()
 
-            if remaining > 0:
+            if diff < cls.RESEND_COOLDOWN_SECONDS:
                 return {
-                    "status": "cooldown",
-                    "remaining": remaining,
+                    "success": False,
+                    "code": "COOLDOWN_ACTIVE",
+                    "message": "Please wait before requesting OTP",
+                    "data": {
+                        "remaining_seconds": int(
+                            cls.RESEND_COOLDOWN_SECONDS - diff
+                        ),
+                    },
                 }
 
-        user.otps.filter(is_used=False, expires_at__gt=now).update(is_used=True)
+        user.otps.filter(
+            is_used=False,
+            expires_at__gt=now
+        ).update(is_used=True)
 
-        code = cls.generate_code()
-
-        UserOTP.objects.create(
+        otp = UserOTP.objects.create(
             user=user,
-            code=code,
+            code=cls.generate_otp(),
             expires_at=now + timedelta(minutes=cls.OTP_EXPIRE_MINUTES),
+            attempts=0,
         )
         email_result = cls.send_otp_email(user, code)
 
         return {
+<<<<<<< HEAD
+            "success": True,
+            "code": "OTP_SENT",
+            "message": "OTP sent successfully",
+            "data": {
+                "otp_id": str(otp.id),
+                "expires_in_seconds": cls.OTP_EXPIRE_MINUTES * 60,
+            },
+=======
             "status": "sent",
             "expires_in": cls.OTP_EXPIRE_MINUTES * 60,
             "email_sent": email_result["sent"],
             "email_to": email_result["to"],
             "email_error": email_result["error"],
             "email_detail": email_result.get("detail"),
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
         }
 
-    @staticmethod
+   
+    @classmethod
     @transaction.atomic
-    def verify(user, code):
+    def verify_otp(cls, phone_number: str, code: str):
+        now = timezone.now()
+        phone_number = cls.normalize_phone(phone_number)
+
+        user = cls._get_user(phone_number)
+
+        if not user:
+            return {
+                "success": False,
+                "code": "USER_NOT_FOUND",
+                "message": "User does not exist",
+                "data": {},
+            }
+
+       
         otp = (
-            user.otps.select_for_update()
-            .filter(code=code, is_used=False)
+            user.otps
+            .select_for_update()
+            .filter(is_used=False)
             .order_by("-created_at")
             .first()
         )
 
         if not otp:
-            return {"status": False, "error": "OTP_NOT_FOUND"}
+            return {
+                "success": False,
+                "code": "OTP_NOT_FOUND",
+                "message": "OTP does not exist or already used",
+                "data": {},
+            }
 
-        if otp.is_expired():
-            return {"status": False, "error": "OTP_EXPIRED"}
+      
+        if otp.expires_at <= now:
+            return {
+                "success": False,
+                "code": "OTP_EXPIRED",
+                "message": "OTP expired",
+                "data": {},
+            }
+
+        
+        if otp.is_used:
+            return {
+                "success": False,
+                "code": "OTP_ALREADY_USED",
+                "message": "OTP already used",
+                "data": {},
+            }
+
+        
+        if otp.attempts >= cls.MAX_ATTEMPTS:
+            return {
+                "success": False,
+                "code": "MAX_ATTEMPTS_REACHED",
+                "message": "Too many attempts",
+                "data": {},
+            }
+
+       
+        if otp.code != code:
+            otp.attempts += 1
+            otp.save(update_fields=["attempts"])
+
+            return {
+                "success": False,
+                "code": "OTP_INVALID",
+                "message": "Incorrect OTP",
+                "data": {
+                    "attempts_left": max(
+                        0,
+                        cls.MAX_ATTEMPTS - otp.attempts
+                    ),
+                },
+            }
+
 
         otp.is_used = True
         otp.save(update_fields=["is_used"])
@@ -140,6 +253,18 @@ class OTPService:
         user.is_verified = True
         user.save(update_fields=["is_active", "is_verified"])
 
+<<<<<<< HEAD
+        return {
+            "success": True,
+            "code": "VERIFIED",
+            "message": "User verified successfully",
+            "data": {
+                "user_id": str(user.id),
+                "phone_number": user.phone_number,
+            },
+        }
+    
+=======
         return {"status": True, "message": "VERIFIED"}
 
     @staticmethod
@@ -168,3 +293,4 @@ class OTPService:
         user.save(update_fields=["is_active", "is_verified"])
 
         return {"status": True, "message": "VERIFIED"}
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c

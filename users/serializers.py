@@ -1,11 +1,20 @@
 import re
 
 from django.contrib.auth import get_user_model
+<<<<<<< HEAD
+from django.db import IntegrityError
+from rest_framework import serializers
+
+from common.models import UserAddress
+from .models import UserProfile
+from .services import UserService
+=======
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers
 
 from .models import UserOTP, UserProfile
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
 User = get_user_model()
 
@@ -15,15 +24,25 @@ OTP_REGEX = re.compile(r"^\d{6}$")
 
 def clean_phone(value):
     value = re.sub(r"\s+", "", (value or "").strip())
+
     if not PHONE_REGEX.match(value):
-        raise serializers.ValidationError({"code": "INVALID_PHONE"})
+        raise serializers.ValidationError({
+            "code": "INVALID_PHONE",
+            "message": "Phone format is invalid",
+        })
+
     return value
 
 
 def clean_otp(value):
     value = (value or "").strip()
+
     if not OTP_REGEX.match(value):
-        raise serializers.ValidationError({"code": "INVALID_OTP"})
+        raise serializers.ValidationError({
+            "code": "INVALID_OTP",
+            "message": "OTP format is invalid",
+        })
+
     return value
 
 
@@ -38,6 +57,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
+<<<<<<< HEAD
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "gender",
+            "birth_date",
+            "bio",
+        )
+
+
+class UserAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAddress
+=======
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
         fields = (
             "id",
             "user_id",
@@ -139,6 +174,36 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+<<<<<<< HEAD
+        phone_number = validated_data["phone_number"]
+        email = validated_data.get("email", "")
+
+        try:
+            user, created = User.objects.get_or_create(
+                phone_number=phone_number,
+                defaults={
+                    "email": email,
+                    "is_active": False,
+                    "is_verified": False,
+                },
+            )
+        except IntegrityError:
+            raise serializers.ValidationError({
+                "code": "USER_CREATION_FAILED",
+                "message": "User creation conflict",
+            })
+
+        if not created and email and user.email != email:
+            user.email = email
+
+            try:
+                user.save(update_fields=["email"])
+            except IntegrityError:
+                raise serializers.ValidationError({
+                    "code": "EMAIL_ALREADY_EXISTS",
+                    "message": "Email already taken",
+                })
+=======
         phone = validated_data["phone_number"]
         gmail = validated_data.get("gmail", None)
 
@@ -175,6 +240,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                     {"phone_number": ["bu raqam mavjut."]}
                 )
             raise
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
         return user
 
@@ -194,6 +260,11 @@ class VerifyOTPSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
+<<<<<<< HEAD
+        phone_number = attrs["phone_number"]
+
+        user = UserService.get_user(phone_number)
+=======
         phone = attrs["phone_number"]
         otp_code = attrs.get("otp_code")
         otp = attrs.get("otp")
@@ -205,9 +276,36 @@ class VerifyOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError({"code": "OTP_MISMATCH"})
 
         code = otp_code or otp
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
 
-        user = User.objects.filter(phone_number=phone).first()
         if not user:
+<<<<<<< HEAD
+            raise serializers.ValidationError({
+                "code": "USER_NOT_FOUND",
+                "message": "User does not exist",
+            })
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.validated_data["user"]
+        code = self.validated_data["otp_code"]
+
+        result = UserService.verify_otp(
+            phone_number=user.phone_number,
+            code=code,
+        )
+
+        if not result["success"]:
+            raise serializers.ValidationError({
+                "code": result.get("code", "OTP_ERROR"),
+                "message": result.get("message", "OTP verification failed"),
+            })
+
+        return user
+    
+=======
             raise serializers.ValidationError({"code": "USER_NOT_FOUND"})
 
         otp_instance = (
@@ -228,3 +326,4 @@ class VerifyOTPSerializer(serializers.Serializer):
         attrs["otp"] = otp_instance
         attrs["otp_code"] = code
         return attrs
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c

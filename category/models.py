@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.utils.text import slugify
+from django.core.exceptions import ValidationError
 
 
 class FieldType(models.TextChoices):
@@ -11,10 +12,22 @@ class FieldType(models.TextChoices):
     CHECKBOX = "checkbox", "Checkbox"
 
 
+class CategoryQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True, is_deleted=False)
+
+
+class CategoryManager(models.Manager):
+    def get_queryset(self):
+        return CategoryQuerySet(self.model, using=self._db).active()
+
+
 def generate_unique_slug(instance, base_slug):
+    model = instance.__class__
+
+    base_slug = base_slug or str(instance.id)
     slug = base_slug
     counter = 1
-    model = instance.__class__
 
     while model.objects.filter(slug=slug).exclude(id=instance.id).exists():
         slug = f"{base_slug}-{counter}"
@@ -23,18 +36,14 @@ def generate_unique_slug(instance, base_slug):
     return slug
 
 
-class ActiveManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(
-            is_active=True,
-            is_deleted=False
-        )
-
-
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+<<<<<<< HEAD
+
+=======
+>>>>>>> 1ad953692057d6f3a9567c6264443e1c3567615c
     name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True, blank=True)
+    slug = models.SlugField(max_length=255, unique=True, blank=True, db_index=True)
 
     parent = models.ForeignKey(
         "self",
@@ -47,30 +56,43 @@ class Category(models.Model):
     image = models.ImageField(upload_to="categories/%Y/%m/", null=True, blank=True)
     icon = models.CharField(max_length=50, null=True, blank=True)
 
-    is_active = models.BooleanField(default=True)
-    is_deleted = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
 
-    order = models.IntegerField(default=0)
+    order = models.PositiveIntegerField(default=0, db_index=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    objects = models.Manager()
-    active = ActiveManager()
+    objects = CategoryManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ["order", "name"]
+
         indexes = [
             models.Index(fields=["slug"]),
-            models.Index(fields=["name"]),
             models.Index(fields=["parent"]),
             models.Index(fields=["is_active", "is_deleted"]),
-            models.Index(fields=["is_deleted", "is_active"]),
+            models.Index(fields=["parent", "order"]),
         ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["parent", "name"],
+                name="unique_category_per_parent"
+            )
+        ]
+
+    def clean(self):
+        if self.parent_id and self.parent_id == self.id:
+            raise ValidationError("Category cannot be parent of itself")
 
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(self, slugify(self.name))
+
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def get_full_path(self):
@@ -98,14 +120,11 @@ class CategoryProperty(models.Model):
     name = models.CharField(max_length=100)
     field_type = models.CharField(max_length=20, choices=FieldType.choices)
     is_required = models.BooleanField(default=False)
-    order = models.IntegerField(default=0)
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["order"]
-        indexes = [
-            models.Index(fields=["category"]),
-            models.Index(fields=["field_type"]),
-        ]
+
         constraints = [
             models.UniqueConstraint(
                 fields=["category", "name"],
@@ -137,3 +156,4 @@ class PropertyOption(models.Model):
 
     def __str__(self):
         return f"{self.property.name} - {self.value}"
+    
