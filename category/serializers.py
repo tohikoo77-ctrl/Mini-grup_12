@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Category
+
+from .models import Category, CategoryProperty, PropertyOption
 
 
 class PropertyOptionSerializer(serializers.ModelSerializer):
@@ -65,6 +66,7 @@ class CategoryListSerializer(serializers.ModelSerializer):
 
 
 class CategoryDetailSerializer(serializers.ModelSerializer):
+    parent_name = serializers.CharField(source="parent.name", read_only=True)
     children = serializers.SerializerMethodField()
     properties = serializers.SerializerMethodField()
     full_path = serializers.SerializerMethodField()
@@ -95,13 +97,13 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
                 "is_active": c.is_active,
                 "order": c.order,
             }
-            for c in (getattr(obj, "_children_cache", []) or [])
+            for c in obj.children.all()
         ]
 
     def get_properties(self, obj):
         result = []
 
-        for p in (getattr(obj, "_properties_cache", []) or []):
+        for p in obj.properties.all():
             result.append({
                 "id": p.id,
                 "name": p.name,
