@@ -22,6 +22,17 @@ class CartViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = CartSerializer
 
+    def get_serializer_class(self):
+        if self.action == 'add_item':
+            return AddCartItemSerializer
+        if self.action == 'remove_item':
+            return RemoveCartItemSerializer
+        if self.action == 'update_item':
+            return UpdateCartItemSerializer
+        if self.action == 'checkout':
+            return CartCheckoutSerializer
+        return super().get_serializer_class()
+
     def get_queryset(self):
         return (
             Cart.objects.filter(user=self.request.user)
