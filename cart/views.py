@@ -8,9 +8,9 @@ from rest_framework.response import Response
 
 from order.models import Order, OrderItem
 from order.serializers import CartCheckoutSerializer, OrderSerializer
-
-from .models import Cart, CartItem
+from .models import Cart, CartItem 
 from .serializers import (
+    CartItemSerializer,
     AddCartItemSerializer,
     CartSerializer,
     RemoveCartItemSerializer,
@@ -23,6 +23,8 @@ class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
 
     def get_serializer_class(self):
+        if self.action in ['my_cart', 'my_cart_list']:
+            return CartSerializer
         if self.action == 'add_item':
             return AddCartItemSerializer
         if self.action == 'remove_item':
@@ -31,6 +33,8 @@ class CartViewSet(viewsets.ModelViewSet):
             return UpdateCartItemSerializer
         if self.action == 'checkout':
             return CartCheckoutSerializer
+        if self.action == 'cart_item_detail':
+            return CartItemSerializer
         return super().get_serializer_class()
 
     def get_queryset(self):
@@ -50,7 +54,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def serialize_cart(self, cart):
         cart = self.get_queryset().get(pk=cart.pk)
-        # self.get_serializer o'rniga to'g'ridan-to'g'ri CartSerializer'ni chaqiramiz:
         return CartSerializer(cart, context=self.get_serializer_context()).data
 
     def cart_response(self, message, cart, response_status=status.HTTP_200_OK):
@@ -74,10 +77,30 @@ class CartViewSet(viewsets.ModelViewSet):
 
         return item
 
+    @action(detail=True, methods=["get"], url_path="")
+    def my_cart(self, request, pk=None):
+        cart = get_object_or_404(self.get_queryset(), pk=pk)
+        return Response(self.serialize_cart(cart))
+
     @action(detail=False, methods=["get"])
-    def my_cart(self, request):
+    def my_cart_list(self, request):
         cart = self.get_cart()
         return Response(self.serialize_cart(cart))
+
+    @action(detail=False, methods=["get"], url_path="item/(?P<item_id>[^/.]+)")
+    def cart_item_detail(self, request, item_id=None):
+        cart = self.get_cart()
+        item = (
+            CartItem.objects.select_related("product")
+            .filter(cart=cart, id=item_id)
+            .first()
+        )
+
+        if item is None:
+            raise NotFound({"detail": "Bu maxsulot savatda topilmadi."})
+
+        serializer = self.get_serializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
     def add_item(self, request):
