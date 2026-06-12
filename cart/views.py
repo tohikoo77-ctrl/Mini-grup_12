@@ -50,7 +50,8 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def serialize_cart(self, cart):
         cart = self.get_queryset().get(pk=cart.pk)
-        return self.get_serializer(cart).data
+        # self.get_serializer o'rniga to'g'ridan-to'g'ri CartSerializer'ni chaqiramiz:
+        return CartSerializer(cart, context=self.get_serializer_context()).data
 
     def cart_response(self, message, cart, response_status=status.HTTP_200_OK):
         return Response(
