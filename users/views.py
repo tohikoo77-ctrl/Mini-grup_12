@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import UserProfile
 from .serializers import (
+    LoginSerializer,
     PhoneNumberSerializer,
     RegisterSerializer,
     UserProfileSerializer,
@@ -101,6 +102,28 @@ class RegisterView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return otp_response(user.phone_number, "OTP_SENT")
+
+
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
+        tokens = get_tokens_for_user(user)
+
+        return api_response(
+            success=True,
+            message="LOGIN_SUCCESS",
+            data={
+                **tokens,
+                "user": UserSerializer(user).data,
+            },
+            status_code=status.HTTP_200_OK,
+        )
 
 
 class SendOTPView(generics.GenericAPIView):

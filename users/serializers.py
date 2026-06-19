@@ -1,6 +1,7 @@
 import re
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
@@ -117,6 +118,12 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(validators=[clean_phone])
     gmail = serializers.EmailField(required=True, allow_blank=False, allow_null=False)
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=False,
+        validators=[validate_password],
+    )
 
     first_name = serializers.CharField(max_length=100, required=True)
     last_name = serializers.CharField(max_length=100, required=True)
@@ -133,6 +140,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = (
             "phone_number",
             "gmail",
+            "password",
             "first_name",
             "last_name",
             "gender",
@@ -154,6 +162,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         phone = validated_data["phone_number"]
         gmail = validated_data.get("gmail")
+        password = validated_data.pop("password", None)
         profile_data = {
             "first_name": validated_data.pop("first_name", ""),
             "last_name": validated_data.pop("last_name", ""),
@@ -170,6 +179,9 @@ class RegisterSerializer(serializers.ModelSerializer):
                     is_active=False,
                     is_verified=False,
                 )
+                if password:
+                    user.set_password(password)
+                    user.save(update_fields=["password"])
                 UserProfile.objects.create(user=user, **profile_data)
         except IntegrityError as exc:
             message = str(exc).lower()
@@ -180,6 +192,35 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise
 
         return user
+
+
+class LoginSerializer(serializers.Serializer):
+    phone_number = serializers.CharField(validators=[clean_phone])
+    password = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, attrs):
+        phone_number = attrs["phone_number"]
+        password = attrs["password"]
+        user = User.objects.filter(phone_number=phone_number).first()
+
+        if not user or not user.check_password(password):
+            raise serializers.ValidationError(
+                {
+                    "code": "INVALID_CREDENTIALS",
+                    "message": "phone_number yoki password xato.",
+                }
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                {
+                    "code": "USER_INACTIVE",
+                    "message": "user active emas.",
+                }
+            )
+
+        attrs["user"] = user
+        return attrs
 
 
 class VerifyOTPSerializer(serializers.Serializer):
