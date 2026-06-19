@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    LoginView,
     MeView,
     RegisterView,
     ResendOTPView,
@@ -15,6 +16,7 @@ from .views import (
 app_name = "users"
 
 urlpatterns = [
+    path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/register/", RegisterView.as_view(), name="register"),
     path("auth/otp/send/", SendOTPView.as_view(), name="otp-send"),
     path("auth/otp/resend/", ResendOTPView.as_view(), name="otp-resend"),
@@ -24,5 +26,5 @@ urlpatterns = [
     path("profile/<str:pk>/", UserProfileDetailView.as_view(), name="profile_detail"),
     path("profile/", UserProfileListCreateView.as_view(), name="profile_list"),
     path("", UserListView.as_view(), name="list"),
-       path("<str:pk>/", UserDetailView.as_view(), name="detail"),
+    path("<str:pk>/", UserDetailView.as_view(), name="detail"),
 ]
